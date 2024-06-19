@@ -17,6 +17,10 @@
     "formatting.gofumpt": true,
     "formatting.local": "github.com/leonardinius/goloxvm",
     "ui.semanticTokens": true,
+    "build.buildFlags": [
+      "-tags",
+      "debug",
+    ],
   },
   "go.formatTool": "goimports",
   "go.testFlags": [

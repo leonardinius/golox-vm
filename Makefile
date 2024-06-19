@@ -24,6 +24,11 @@ MAKEFLAGS 		+= --no-builtin-rules
 MAKEFLAGS		+= --no-print-directory
 GOPATH			?= ${shell go env GOPATH}
 export GOBIN 	:= $(abspath $(BIN))
+# ARGS etc ...
+BUILDTAGS		:= debug
+TESTTAGS		:=
+ARGS 			:=
+
 
 BOLD = \033[1m
 CLEAR = \033[0m
@@ -41,16 +46,13 @@ help: ## Display this help
 
 ##@: Build/Run
 
-all: clean go/gen go/tidy go/format lint build test ## ALL, builds the world
+all: clean go/tidy go/format lint build test ## ALL, builds the world
 
 .PHONY: clean
 clean: ## Clean-up build artifacts
 	@echo -e "$(CYAN)--- clean...$(CLEAR)"
 	@go clean
 	@rm -rf ${BUILDOUT}
-
-.PHONY: gen
-gen: go/gen ## Runs all codegen
 
 .PHONY: test
 test: clean go/test ## Runs all tests
@@ -62,9 +64,9 @@ lint: go/lint ## Runs all linters
 build: go/build ## Build
 
 .PHONY: run
-run: ## Runs golox-vm. Use ARGS="" make run to pass arguments
+run: ## Runs golox-vm. Use 'make ARGS="script.lox" run' to pass arguments
 	@echo -e "$(CYAN)--- run ...$(CLEAR)"
-	go run ./main.go $(ARGS)
+	go run -tags $(BUILDTAGS) ./main.go $(ARGS)
 
 ###@: Go
 .PHONY: go/format
@@ -84,17 +86,12 @@ go/lint: $(BIN)/golangci-lint ### Lints the codebase using golangci-lint
 .PHONY: go/test
 go/test: $(BIN)/gotestsum ### Runs all tests
 	@echo -e "$(CYAN)--- go test ...$(CLEAR)"
-	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./...
-
-.PHONY: go/gen
-go/gen: ### Generate go code
-	@echo -e "$(CYAN)--- go/gen...$(CLEAR)"
-	@go generate ./internal/...
+	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -tags $(TESTTAGS) -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./...
 
 .PHONY: go/build
 go/build: ### Build
 	@echo -e "$(CYAN)--- go/build ...$(CLEAR)"
-	go build -o ${BUILDOUT}/golox-vm ./main.go
+	go build -tags $(BUILDTAGS) -o ${BUILDOUT}/golox-vm ./main.go
 
 # TOOLS
 $(BIN)/golangci-lint: Makefile
