@@ -59,10 +59,10 @@ test: clean go/test ## Runs all tests
 lint: go/lint ## Runs all linters
 
 .PHONY: release
-release: go/release ## Build
+release: go/release ## Build RELEASE (debug off)
 
 .PHONY: debug
-debug: go/debug ## Build DEBUG
+debug: go/debug ## Build DEBUG (debug on)
 
 .PHONY: run
 run: ## Runs golox-vm. Use 'make ARGS="script.lox" run' to pass arguments
