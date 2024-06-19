@@ -1,4 +1,4 @@
-# (Go) Lox (Crafting interpreters)
+# (Go) Lox Bytecode VM (Crafting interpreters)
 
 This is an implementation of [The Lox Programming Language](https://www.craftinginterpreters.com/the-lox-language.html) implemented in Go.
 
