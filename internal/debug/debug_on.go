@@ -1,6 +1,6 @@
 //go:build debug
 
-package disassembler
+package debug
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 type stdoutDisassembler struct{}
 
-var _ disassemblerMethods = (*stdoutDisassembler)(nil)
+var _ disassembler = (*stdoutDisassembler)(nil)
 
 func init() {
 	dd = &stdoutDisassembler{}

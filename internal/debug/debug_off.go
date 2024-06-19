@@ -1,12 +1,12 @@
 //go:build !debug
 
-package disassembler
+package debug
 
 import "github.com/leonardinius/goloxvm/internal/chunk"
 
 type noOpDisassembler struct{}
 
-var _ disassemblerMethods = (*noOpDisassembler)(nil)
+var _ disassembler = (*noOpDisassembler)(nil)
 
 func init() {
 	dd = &noOpDisassembler{}

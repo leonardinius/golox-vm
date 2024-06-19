@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/leonardinius/goloxvm/internal/chunk"
-	"github.com/leonardinius/goloxvm/internal/disassembler"
+	"github.com/leonardinius/goloxvm/internal/debug"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 	ch.InitChunk()
 	ch.Write(chunk.OpReturn)
 
-	disassembler.DisassembleChunk(&ch, "test chunk")
+	debug.DisassembleChunk(&ch, "test chunk")
 
 	ch.FreeChunk()
 	fmt.Println("main > ", strings.Join(args, " "))

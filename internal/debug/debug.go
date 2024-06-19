@@ -1,12 +1,12 @@
-package disassembler
+package debug
 
 import "github.com/leonardinius/goloxvm/internal/chunk"
 
-type disassemblerMethods interface {
+type disassembler interface {
 	disassembleChunk(ch *chunk.Chunk, name string)
 }
 
-var dd disassemblerMethods
+var dd disassembler
 
 func DisassembleChunk(ch *chunk.Chunk, name string) {
 	dd.disassembleChunk(ch, name)
