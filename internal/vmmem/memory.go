@@ -1,6 +1,4 @@
-package mem
-
-import "slices"
+package vmmem
 
 func GrowCapacity(n int) int {
 	if n < 8 {
@@ -21,7 +19,7 @@ func Reallocate[S ~[]E, E any](s S, oldSize, newSize int) S {
 	if newSize == 0 {
 		s = nil
 	} else if newSize > oldSize {
-		s = slices.Grow(s, newSize)
+		s = append(s[:cap(s)], make([]E, newSize-oldSize)...)
 	} else if newSize < oldSize {
 		s = s[:newSize]
 	}
