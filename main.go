@@ -9,22 +9,29 @@ import (
 
 	"github.com/chzyer/readline"
 
+	"github.com/leonardinius/goloxvm/internal/vm"
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
 	"github.com/leonardinius/goloxvm/internal/vmdebug"
 )
 
 func main() {
 	args := os.Args[1:]
+	vm.InitVM()
 	chunk := vmchunk.NewChunk()
 	chunk.InitChunk()
 
-	constant := chunk.AddConstant(1.2)
-	chunk.Write(vmchunk.OpConstant)
-	chunk.Write1(byte(constant))
-	chunk.Write(vmchunk.OpReturn)
+	constant1 := chunk.AddConstant(1.1)
+	chunk.WriteOpcode(vmchunk.OpConstant, 1)
+	chunk.Write(byte(constant1), 1)
+	constant2 := chunk.AddConstant(1.2)
+	chunk.WriteOpcode(vmchunk.OpConstant, 1)
+	chunk.Write(byte(constant2), 1)
+	chunk.WriteOpcode(vmchunk.OpReturn, 1)
 
 	vmdebug.DisassembleChunk(&chunk, "test chunk")
+	vm.Interpret(&chunk)
 
+	vm.FreeVM()
 	chunk.FreeChunk()
 	fmt.Println("main > ", strings.Join(args, " "))
 	_ = repl()

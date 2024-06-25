@@ -22,15 +22,21 @@ func init() {
 
 // DisassembleChunk implements disassemblerMethods.
 func (s *stdoutDisassembler) DisassembleChunk(chunk *vmchunk.Chunk, name string) {
-	println("== " + name + " ==")
+	fmt.Println("== " + name + " ==")
 
 	for offset := 0; offset < chunk.Count; {
-		offset = s.disassembleInstruction(chunk, offset)
+		offset = s.DissasembleInstruction(chunk, offset)
 	}
 }
 
-func (s *stdoutDisassembler) disassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
+func (s *stdoutDisassembler) DissasembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 	fmt.Printf("%04d ", offset)
+	line := chunk.DebugGetLine(offset)
+	if offset > 0 && line == chunk.DebugGetLine(offset-1) {
+		fmt.Print("   | ")
+	} else {
+		fmt.Printf("%4d ", line)
+	}
 
 	instruction := vmchunk.OpCode(chunk.Code[offset])
 	switch instruction {
@@ -47,7 +53,7 @@ func (s *stdoutDisassembler) disassembleInstruction(chunk *vmchunk.Chunk, offset
 func (s *stdoutDisassembler) constantInstruction(name string, chunk *vmchunk.Chunk, offset int) int {
 	constant := chunk.Code[offset+1]
 	fmt.Printf("%-16s %4d '", name, constant)
-	s.printValue(chunk.Constants.At(int(constant)))
+	s.PrintValue(chunk.Constants.At(int(constant)))
 	fmt.Println("'")
 	return offset + 2
 }
@@ -57,6 +63,6 @@ func (s *stdoutDisassembler) simpleInstruction(name string, offset int) int {
 	return offset + 1
 }
 
-func (s *stdoutDisassembler) printValue(v vmvalue.Value) {
+func (s *stdoutDisassembler) PrintValue(v vmvalue.Value) {
 	fmt.Printf("%g", v)
 }

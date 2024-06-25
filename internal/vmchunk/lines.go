@@ -2,7 +2,8 @@ package vmchunk
 
 import (
 	"fmt"
-	"slices"
+
+	"github.com/leonardinius/goloxvm/internal/vmmem"
 )
 
 type Lines struct {
@@ -12,7 +13,7 @@ type Lines struct {
 }
 
 func (l *Lines) Init() {
-	l.raw = make([]byte, 0)
+	l.raw = nil
 	l.index = -1
 	l.offset = -1
 }
@@ -44,9 +45,7 @@ func (l *Lines) MustWriteOffset(offset, line int) {
 	if offset <= l.offset {
 		panic("offset must be non-decreasing")
 	}
-	if offset == l.offset {
-		return
-	}
+
 	if l.isEmpty() {
 		l.index = 0
 		l.offset = offset
@@ -78,10 +77,10 @@ func (l *Lines) MustWriteOffset(offset, line int) {
 }
 
 func (l *Lines) ensureCapacity(lineIndex int) {
-	newcap := (lineIndex + 1) * 3
-	l.raw = slices.Grow(l.raw, newcap)
-	for len(l.raw) < newcap {
-		l.raw = append(l.raw, 0, 0, 0)
+	if cap(l.raw) < (lineIndex+1)*3 {
+		capacity := vmmem.GrowCapacity(len(l.raw))
+		l.raw = vmmem.GrowArray(l.raw, capacity)
+		l.raw = l.raw[:cap(l.raw)]
 	}
 }
 

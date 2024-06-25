@@ -6,25 +6,17 @@ type Value float64
 
 type ValueArray []Value
 
-func (va *ValueArray) Count() int {
-	return len(*va)
-}
-
-func (va *ValueArray) Cap() int {
-	return cap(*va)
-}
-
 func (va *ValueArray) At(i int) Value {
 	return (*va)[i]
 }
 
 func (va *ValueArray) Write(v Value) int {
-	if va.Cap() < va.Count()+1 {
-		capacity := vmmem.GrowCapacity(va.Cap())
+	if cap(*va) < len(*va)+1 {
+		capacity := vmmem.GrowCapacity(cap(*va))
 		*va = vmmem.GrowArray(*va, capacity)
 	}
 	*va = append(*va, v)
-	return va.Count() - 1
+	return len(*va) - 1
 }
 
 func InitValueArray(va *ValueArray) {

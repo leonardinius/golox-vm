@@ -19,7 +19,8 @@ func Reallocate[S ~[]E, E any](s S, oldSize, newSize int) S {
 	if newSize == 0 {
 		s = nil
 	} else if newSize > oldSize {
-		s = append(s[:cap(s)], make([]E, newSize-oldSize)...)
+		// modification of slices.Grow
+		s = append(s[:cap(s)], make([]E, newSize-oldSize)...)[:len(s)]
 	} else if newSize < oldSize {
 		s = s[:newSize]
 	}
