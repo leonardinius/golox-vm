@@ -26,6 +26,7 @@ func main() {
 	constant2 := chunk.AddConstant(1.2)
 	chunk.WriteOpcode(vmchunk.OpConstant, 1)
 	chunk.Write(byte(constant2), 1)
+	chunk.WriteOpcode(vmchunk.OpNegate, 1)
 	chunk.WriteOpcode(vmchunk.OpReturn, 1)
 
 	vmdebug.DisassembleChunk(&chunk, "test chunk")

@@ -46,10 +46,13 @@ func Interpret(chunk *vmchunk.Chunk) InterpretResult {
 }
 
 func Run() InterpretResult {
-	if vmdebug.DEBUG {
+	if vmdebug.DEBUG_DISASSEMBLER {
 		fmt.Printf("")
 		fmt.Println("== trace execution ==")
-		return run(func() {
+	}
+
+	for {
+		if vmdebug.DEBUG_DISASSEMBLER {
 			fmt.Print("          ")
 			for i := range GlobalVM.StackTop {
 				fmt.Print("[ ")
@@ -58,16 +61,8 @@ func Run() InterpretResult {
 			}
 			fmt.Println()
 			vmdebug.DissasembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
-		})
-	}
-	return run(nil)
-}
-
-func run(debugFn func()) InterpretResult {
-	for {
-		if debugFn != nil {
-			debugFn()
 		}
+
 		instruction := vmchunk.OpCode(readByte())
 		switch instruction {
 		case vmchunk.OpReturn:
@@ -77,6 +72,8 @@ func run(debugFn func()) InterpretResult {
 		case vmchunk.OpConstant:
 			constant := readConstant()
 			Push(constant)
+		case vmchunk.OpNegate:
+			Push(-Pop())
 		default:
 			fmt.Printf("Unexpected instruction %d\n", instruction)
 			return InterpretRuntimeError

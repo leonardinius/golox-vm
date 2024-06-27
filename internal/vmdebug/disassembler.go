@@ -6,10 +6,9 @@ import (
 	"fmt"
 
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
-	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
-const DEBUG = true
+const DEBUG_DISASSEMBLER = true
 
 // Disassembler is an interface for disassembling chunks.
 type stdoutDisassembler struct{}
@@ -42,6 +41,8 @@ func (s *stdoutDisassembler) DissasembleInstruction(chunk *vmchunk.Chunk, offset
 	switch instruction {
 	case vmchunk.OpConstant:
 		return s.constantInstruction("OP_CONSTANT", chunk, offset)
+	case vmchunk.OpNegate:
+		return s.simpleInstruction("OP_NEGATE", offset)
 	case vmchunk.OpReturn:
 		return s.simpleInstruction("OP_RETURN", offset)
 	default:
@@ -53,7 +54,7 @@ func (s *stdoutDisassembler) DissasembleInstruction(chunk *vmchunk.Chunk, offset
 func (s *stdoutDisassembler) constantInstruction(name string, chunk *vmchunk.Chunk, offset int) int {
 	constant := chunk.Code[offset+1]
 	fmt.Printf("%-16s %4d '", name, constant)
-	s.PrintValue(chunk.Constants.At(int(constant)))
+	PrintValue(chunk.Constants.At(int(constant)))
 	fmt.Println("'")
 	return offset + 2
 }
@@ -61,8 +62,4 @@ func (s *stdoutDisassembler) constantInstruction(name string, chunk *vmchunk.Chu
 func (s *stdoutDisassembler) simpleInstruction(name string, offset int) int {
 	fmt.Println(name)
 	return offset + 1
-}
-
-func (s *stdoutDisassembler) PrintValue(v vmvalue.Value) {
-	fmt.Printf("%g", v)
 }

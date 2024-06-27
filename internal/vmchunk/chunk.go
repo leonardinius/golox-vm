@@ -9,6 +9,7 @@ type OpCode byte
 
 const (
 	OpConstant OpCode = iota
+	OpNegate
 	OpReturn
 )
 

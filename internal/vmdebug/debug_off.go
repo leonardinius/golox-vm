@@ -2,4 +2,4 @@
 
 package vmdebug
 
-const DEBUG = false
+const DEBUG_DISASSEMBLER = false
