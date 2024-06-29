@@ -9,6 +9,11 @@ type OpCode byte
 
 const (
 	OpConstant OpCode = iota
+	OpPop
+	OpAdd
+	OpSubtract
+	OpMultiply
+	OpDivide
 	OpNegate
 	OpReturn
 )

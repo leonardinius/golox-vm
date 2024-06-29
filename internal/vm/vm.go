@@ -65,15 +65,34 @@ func Run() InterpretResult {
 
 		instruction := vmchunk.OpCode(readByte())
 		switch instruction {
+
+		case vmchunk.OpConstant:
+			constant := readConstant()
+			Push(constant)
+
+		case vmchunk.OpAdd:
+			binaryOpAdd()
+
+		case vmchunk.OpSubtract:
+			binaryOpSubtract()
+
+		case vmchunk.OpMultiply:
+			binaryOpMultiply()
+
+		case vmchunk.OpDivide:
+			binaryOpDivide()
+
+		case vmchunk.OpNegate:
+			Push(-Pop())
+
+		case vmchunk.OpPop:
+			Pop()
+
 		case vmchunk.OpReturn:
 			vmdebug.PrintValue(Pop())
 			fmt.Println()
 			return InterpretSuccess
-		case vmchunk.OpConstant:
-			constant := readConstant()
-			Push(constant)
-		case vmchunk.OpNegate:
-			Push(-Pop())
+
 		default:
 			fmt.Printf("Unexpected instruction %d\n", instruction)
 			return InterpretRuntimeError
@@ -89,6 +108,30 @@ func Push(value vmvalue.Value) {
 func Pop() vmvalue.Value {
 	GlobalVM.StackTop--
 	return GlobalVM.Stack[GlobalVM.StackTop]
+}
+
+func binaryOpAdd() {
+	b := Pop()
+	a := Pop()
+	Push(a + b)
+}
+
+func binaryOpSubtract() {
+	b := Pop()
+	a := Pop()
+	Push(a - b)
+}
+
+func binaryOpMultiply() {
+	b := Pop()
+	a := Pop()
+	Push(a * b)
+}
+
+func binaryOpDivide() {
+	b := Pop()
+	a := Pop()
+	Push(a / b)
 }
 
 func readByte() byte {

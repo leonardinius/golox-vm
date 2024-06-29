@@ -39,12 +39,31 @@ func (s *stdoutDisassembler) DissasembleInstruction(chunk *vmchunk.Chunk, offset
 
 	instruction := vmchunk.OpCode(chunk.Code[offset])
 	switch instruction {
+
 	case vmchunk.OpConstant:
 		return s.constantInstruction("OP_CONSTANT", chunk, offset)
+
+	case vmchunk.OpAdd:
+		return s.simpleInstruction("OP_ADD", offset)
+
+	case vmchunk.OpSubtract:
+		return s.simpleInstruction("OP_SUBTRACT", offset)
+
+	case vmchunk.OpMultiply:
+		return s.simpleInstruction("OP_MULTIPLY", offset)
+
+	case vmchunk.OpDivide:
+		return s.simpleInstruction("OP_DIVIDE", offset)
+
 	case vmchunk.OpNegate:
 		return s.simpleInstruction("OP_NEGATE", offset)
+
+	case vmchunk.OpPop:
+		return s.simpleInstruction("OP_POP", offset)
+
 	case vmchunk.OpReturn:
 		return s.simpleInstruction("OP_RETURN", offset)
+
 	default:
 		fmt.Printf("Unknown opcode %d\n", instruction)
 		return offset + 1
