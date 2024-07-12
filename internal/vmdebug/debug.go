@@ -6,20 +6,20 @@ import (
 
 type Disassembler interface {
 	DisassembleChunk(chunk *vmchunk.Chunk, name string)
-	DissasembleInstruction(chunk *vmchunk.Chunk, offset int) int
+	DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int
 }
 
 var dd Disassembler = nil
 
 func DisassembleChunk(chunk *vmchunk.Chunk, name string) {
-	if DEBUG_DISASSEMBLER {
+	if DebugDisassembler {
 		dd.DisassembleChunk(chunk, name)
 	}
 }
 
-func DissasembleInstruction(chunk *vmchunk.Chunk, offset int) int {
-	if DEBUG_DISASSEMBLER {
-		return dd.DissasembleInstruction(chunk, offset)
+func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
+	if DebugDisassembler {
+		return dd.DisassembleInstruction(chunk, offset)
 	}
 	return 0
 }

@@ -44,5 +44,13 @@
   },
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "modifications",
-  "cSpell.words": [],
+  "cSpell.words": [
+    "goloxvm",
+    "leonardinius",
+    "readline",
+    "vmchunk",
+    "vmdebug",
+    "vmvalue"
+  ],
+  "cSpell.enabled": true,
 }

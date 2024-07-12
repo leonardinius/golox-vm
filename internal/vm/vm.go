@@ -46,13 +46,13 @@ func Interpret(chunk *vmchunk.Chunk) InterpretResult {
 }
 
 func Run() InterpretResult {
-	if vmdebug.DEBUG_DISASSEMBLER {
+	if vmdebug.DebugDisassembler {
 		fmt.Printf("")
 		fmt.Println("== trace execution ==")
 	}
 
 	for {
-		if vmdebug.DEBUG_DISASSEMBLER {
+		if vmdebug.DebugDisassembler {
 			fmt.Print("          ")
 			for i := range GlobalVM.StackTop {
 				fmt.Print("[ ")
@@ -60,12 +60,11 @@ func Run() InterpretResult {
 				fmt.Print(" ]")
 			}
 			fmt.Println()
-			vmdebug.DissasembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
+			vmdebug.DisassembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
 		}
 
 		instruction := vmchunk.OpCode(readByte())
 		switch instruction {
-
 		case vmchunk.OpConstant:
 			constant := readConstant()
 			Push(constant)

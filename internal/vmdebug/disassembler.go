@@ -8,7 +8,7 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
 )
 
-const DEBUG_DISASSEMBLER = true
+const DebugDisassembler = true
 
 // Disassembler is an interface for disassembling chunks.
 type stdoutDisassembler struct{}
@@ -24,11 +24,11 @@ func (s *stdoutDisassembler) DisassembleChunk(chunk *vmchunk.Chunk, name string)
 	fmt.Println("== " + name + " ==")
 
 	for offset := 0; offset < chunk.Count; {
-		offset = s.DissasembleInstruction(chunk, offset)
+		offset = s.DisassembleInstruction(chunk, offset)
 	}
 }
 
-func (s *stdoutDisassembler) DissasembleInstruction(chunk *vmchunk.Chunk, offset int) int {
+func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 	fmt.Printf("%04d ", offset)
 	line := chunk.DebugGetLine(offset)
 	if offset > 0 && line == chunk.DebugGetLine(offset-1) {
