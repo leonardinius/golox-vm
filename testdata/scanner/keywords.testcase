@@ -1,0 +1,48 @@
+//!# this is testcase directive
+//!#
+//!# TOKEN_AND
+//!# TOKEN_CLASS
+//!# TOKEN_ELSE
+//!# TOKEN_FALSE
+//!# TOKEN_FOR
+//!# TOKEN_FUN
+//!# TOKEN_IF
+//!# TOKEN_NIL
+//!# TOKEN_OR
+//!# TOKEN_PRINT
+//!# TOKEN_RETURN
+//!# TOKEN_SUPER
+//!# TOKEN_THIS
+//!# TOKEN_TRUE
+//!# TOKEN_VAR
+//!# TOKEN_WHILE
+//!#
+//!# And anything else is identifier
+//!# TOKEN_IDENTIFIER
+and class else false for fun if nil or print return super this true var while
+aNd a _a _
+
+//!# Expect
+0001 [TOKEN_AND] 'and'
+0001 [TOKEN_CLASS] 'class'
+0001 [TOKEN_ELSE] 'else'
+0001 [TOKEN_FALSE] 'false'
+0001 [TOKEN_FOR] 'for'
+0001 [TOKEN_FUN] 'fun'
+0001 [TOKEN_IF] 'if'
+0001 [TOKEN_NIL] 'nil'
+0001 [TOKEN_OR] 'or'
+0001 [TOKEN_PRINT] 'print'
+0001 [TOKEN_RETURN] 'return'
+0001 [TOKEN_SUPER] 'super'
+0001 [TOKEN_THIS] 'this'
+0001 [TOKEN_TRUE] 'true'
+0001 [TOKEN_VAR] 'var'
+0001 [TOKEN_WHILE] 'while'
+//!# comment: next line
+0002 [TOKEN_IDENTIFIER] 'aNd'
+0002 [TOKEN_IDENTIFIER] 'a'
+0002 [TOKEN_IDENTIFIER] '_a'
+0002 [TOKEN_IDENTIFIER] '_'
+//!# comment: EOF
+0002 [TOKEN_EOF] ''

@@ -77,19 +77,23 @@ func Interpret(script string, code []byte) (vmvalue.Value, error) {
 
 func Run() (vmvalue.Value, InterpretResult) {
 	if vmdebug.DebugDisassembler {
-		fmt.Printf("")
+		fmt.Println()
 		fmt.Println("== trace execution ==")
+
+		defer fmt.Println()
 	}
 
 	for {
 		if vmdebug.DebugDisassembler {
-			fmt.Print("          ")
-			for i := range GlobalVM.StackTop {
-				fmt.Print("[ ")
-				vmdebug.PrintValue(GlobalVM.Stack[i])
-				fmt.Print(" ]")
+			if GlobalVM.StackTop > 0 {
+				fmt.Print("          ")
+				for i := range GlobalVM.StackTop {
+					fmt.Print("[ ")
+					vmdebug.PrintValue(GlobalVM.Stack[i])
+					fmt.Print(" ]")
+				}
+				fmt.Println()
 			}
-			fmt.Println()
 			vmdebug.DisassembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
 		}
 

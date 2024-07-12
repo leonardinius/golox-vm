@@ -1,0 +1,18 @@
+//!# this is testcase directive
+//!#
+""
+"a"
+"a
+and
+b"
+"
+
+//!# Expect
+0001 [TOKEN_STRING] '""'
+0002 [TOKEN_STRING] '"a"'
+0003 [TOKEN_STRING] '"a
+and
+b"'
+0006 [TOKEN_ERROR] 'Unterminated string.'
+0006 [TOKEN_EOF] ''
+

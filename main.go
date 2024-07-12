@@ -19,7 +19,7 @@ func main() {
 	var err error
 	if len(args) == 0 {
 		fmt.Println("Welcome to the Lox REPL!")
-		err = repl("main")
+		err = repl("repl")
 	} else if len(args) == 1 {
 		err = runFile(args[0])
 	} else {

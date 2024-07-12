@@ -14,23 +14,7 @@ func Compile(source []byte) (vmchunk.Chunk, error) {
 	chunk := vmchunk.NewChunk()
 	chunk.InitChunk()
 
-	constant1 := chunk.AddConstant(1.1)
-	chunk.WriteOpcode(vmchunk.OpConstant, 1)
-	chunk.Write(byte(constant1), 1)
-	// constant2 := chunk.AddConstant(1.2)
-	// chunk.WriteOpcode(vmchunk.OpConstant, 1)
-	// chunk.Write(byte(constant2), 1)
-	// chunk.WriteOpcode(vmchunk.OpNegate, 1)
-	// chunk.WriteOpcode(vmchunk.OpPop, 1)
-	// chunk.WriteOpcode(vmchunk.OpPop, 1)
-
-	// addBinOp(&chunk, vmchunk.OpAdd, 2.0, 3.0)
-	// chunk.WriteOpcode(vmchunk.OpPop, 1)
-	// addBinOp(&chunk, vmchunk.OpSubtract, 2.0, 3.0)
-	// chunk.WriteOpcode(vmchunk.OpPop, 1)
-	// addBinOp(&chunk, vmchunk.OpMultiply, 2.0, 3.0)
-	// chunk.WriteOpcode(vmchunk.OpPop, 1)
-	// addBinOp(&chunk, vmchunk.OpDivide, 2.0, 3.0)
+	AddBinOp(&chunk, vmchunk.OpAdd, 2.0, 3.0)
 	chunk.WriteOpcode(vmchunk.OpReturn, 1)
 
 	return chunk, nil
@@ -46,7 +30,7 @@ func parseTokens(scanner Scanner) {
 		} else {
 			fmt.Print("  |  ")
 		}
-		fmt.Printf("[%17s] '%s'\n", token.Type, token.Lexeme())
+		fmt.Printf("[%-17s] '%s'\n", token.Type, token.Lexeme())
 
 		// for now just print the tokens
 		if token.Type == TokenEOF {

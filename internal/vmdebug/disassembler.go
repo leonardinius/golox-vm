@@ -21,7 +21,8 @@ func init() {
 
 // DisassembleChunk implements disassemblerMethods.
 func (s *stdoutDisassembler) DisassembleChunk(chunk *vmchunk.Chunk, name string) {
-	fmt.Println("== " + name + " ==")
+	fmt.Println()
+	fmt.Println("== '" + name + "' byte code ==")
 
 	for offset := 0; offset < chunk.Count; {
 		offset = s.DisassembleInstruction(chunk, offset)
