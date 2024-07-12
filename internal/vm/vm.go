@@ -58,16 +58,16 @@ func resetChunk() {
 	GlobalVM.IP = 0
 }
 
-func Interpret(scriptName, code string) (vmvalue.Value, error) {
+func Interpret(script string, code []byte) (vmvalue.Value, error) {
 	chunk, err := vmcompiler.Compile(code)
 	if err != nil {
-		return vmvalue.NilValue, fmt.Errorf("compile %s: %w", scriptName, err)
+		return vmvalue.NilValue, fmt.Errorf("compile %s: %w", script, err)
 	}
 
 	initVMChunk(&chunk)
 	defer resetChunk()
 
-	vmdebug.DisassembleChunk(GlobalVM.Chunk, scriptName)
+	vmdebug.DisassembleChunk(GlobalVM.Chunk, script)
 	if value, result := Run(); result == InterpretRuntimeError {
 		return value, errRuntimeError
 	} else {

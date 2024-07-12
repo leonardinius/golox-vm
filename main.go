@@ -45,7 +45,7 @@ func repl(welcome string) error {
 	defer ioClose(rl)
 
 	for {
-		line, err := rl.Readline()
+		line, err := rl.ReadSlice()
 		if err != nil {
 			return err
 		}
@@ -59,9 +59,9 @@ func repl(welcome string) error {
 }
 
 func runFile(script string) error {
-	data, err := os.ReadFile(script) //nolint:gosec // ssss
+	data, err := os.ReadFile(script) //nolint:gosec // get the data
 	if err == nil {
-		_, err = vm.Interpret(script, string(data))
+		_, err = vm.Interpret(filepath.Base(script), data)
 	}
 	return err
 }
