@@ -14,6 +14,7 @@
   "explorer.sortOrder": "foldersNestsFiles",
   "go.lintTool": "golangci-lint",
   "gopls": {
+    "ui.diagnostic.analysisProgressReporting": true,
     "formatting.gofumpt": true,
     "formatting.local": "github.com/leonardinius/goloxvm",
     "ui.semanticTokens": true,
@@ -44,5 +45,5 @@
   },
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "modifications",
-  "cSpell.words": [],
+  "cSpell.enabled": false,
 }

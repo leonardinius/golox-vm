@@ -1,48 +1,73 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"github.com/chzyer/readline"
 
-	"github.com/leonardinius/goloxvm/internal/chunk"
-	"github.com/leonardinius/goloxvm/internal/debug"
+	"github.com/leonardinius/goloxvm/internal/vm"
+	"github.com/leonardinius/goloxvm/internal/vmdebug"
 )
 
 func main() {
 	args := os.Args[1:]
-	ch := chunk.NewChunk()
-	ch.InitChunk()
-	ch.Write(chunk.OpReturn)
+	vm.InitVM()
 
-	debug.DisassembleChunk(&ch, "test chunk")
+	var err error
+	if len(args) == 0 {
+		fmt.Println("Welcome to the Lox REPL!")
+		err = repl("main")
+	} else if len(args) == 1 {
+		err = runFile(args[0])
+	} else {
+		fmt.Printf("Usage: %s [path]\n", filepath.Base(os.Args[0]))
+		os.Exit(64)
+	}
 
-	ch.FreeChunk()
-	fmt.Println("main > ", strings.Join(args, " "))
-	_ = repl()
+	vm.FreeVM()
+
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(65)
+	}
 
 	os.Exit(0)
 }
 
-func repl() error {
-	rl, err := readline.New("> ")
+func repl(welcome string) error {
+	rl, err := readline.New(welcome + "> ")
 	if err != nil {
 		return err
 	}
-	defer func() { _ = rl.Close() }()
+	defer ioClose(rl)
 
 	for {
-		line, err := rl.Readline()
-		if errors.Is(err, io.EOF) {
-			return nil
-		}
+		line, err := rl.ReadSlice()
 		if err != nil {
 			return err
 		}
-		fmt.Printf("<< %s\n", line)
+
+		if value, err := vm.Interpret(welcome, line); err == nil {
+			vmdebug.PrintlnValue(value)
+		} else {
+			fmt.Println(err)
+		}
+	}
+}
+
+func runFile(script string) error {
+	data, err := os.ReadFile(script) //nolint:gosec // get the data
+	if err == nil {
+		_, err = vm.Interpret(filepath.Base(script), data)
+	}
+	return err
+}
+
+func ioClose(c io.Closer) {
+	if err := c.Close(); err != nil {
+		fmt.Printf("[WARN] close: %s\n", err)
 	}
 }

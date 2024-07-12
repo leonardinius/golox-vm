@@ -67,6 +67,11 @@ debug: go/debug ## Build DEBUG (debug on)
 .PHONY: run
 run: ## Runs golox-vm. Use 'make ARGS="script.lox" run' to pass arguments
 	@echo -e "$(CYAN)--- run ...$(CLEAR)"
+	go run ./main.go $(ARGS)
+
+.PHONY: rund
+rund: ## Runs goloxd-vm. Use 'make ARGS="script.lox" run' to pass arguments
+	@echo -e "$(CYAN)--- run ...$(CLEAR)"
 	go run -tags debug ./main.go $(ARGS)
 
 ###@: Go
