@@ -1,82 +1,73 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"github.com/chzyer/readline"
 
 	"github.com/leonardinius/goloxvm/internal/vm"
-	"github.com/leonardinius/goloxvm/internal/vmchunk"
 	"github.com/leonardinius/goloxvm/internal/vmdebug"
-	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
 func main() {
 	args := os.Args[1:]
 	vm.InitVM()
-	chunk := vmchunk.NewChunk()
-	chunk.InitChunk()
 
-	constant1 := chunk.AddConstant(1.1)
-	chunk.WriteOpcode(vmchunk.OpConstant, 1)
-	chunk.Write(byte(constant1), 1)
-	constant2 := chunk.AddConstant(1.2)
-	chunk.WriteOpcode(vmchunk.OpConstant, 1)
-	chunk.Write(byte(constant2), 1)
-	chunk.WriteOpcode(vmchunk.OpNegate, 1)
-	chunk.WriteOpcode(vmchunk.OpPop, 1)
-	chunk.WriteOpcode(vmchunk.OpPop, 1)
-
-	addBinOp(&chunk, vmchunk.OpAdd, 2.0, 3.0)
-	chunk.WriteOpcode(vmchunk.OpPop, 1)
-	addBinOp(&chunk, vmchunk.OpSubtract, 2.0, 3.0)
-	chunk.WriteOpcode(vmchunk.OpPop, 1)
-	addBinOp(&chunk, vmchunk.OpMultiply, 2.0, 3.0)
-	chunk.WriteOpcode(vmchunk.OpPop, 1)
-	addBinOp(&chunk, vmchunk.OpDivide, 2.0, 3.0)
-	chunk.WriteOpcode(vmchunk.OpReturn, 1)
-
-	vmdebug.DisassembleChunk(&chunk, "test chunk")
-	vm.Interpret(&chunk)
+	var err error
+	if len(args) == 0 {
+		fmt.Println("Welcome to the Lox REPL!")
+		err = repl("main")
+	} else if len(args) == 1 {
+		err = runFile(args[0])
+	} else {
+		fmt.Printf("Usage: %s [path]\n", filepath.Base(os.Args[0]))
+		os.Exit(64)
+	}
 
 	vm.FreeVM()
-	chunk.FreeChunk()
-	fmt.Println("main > ", strings.Join(args, " "))
-	_ = repl()
+
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(65)
+	}
 
 	os.Exit(0)
 }
 
-func addBinOp(chunk *vmchunk.Chunk, op vmchunk.OpCode, a, b vmvalue.Value) {
-	aConstant := chunk.AddConstant(a)
-	bConstant := chunk.AddConstant(b)
-
-	chunk.WriteOpcode(vmchunk.OpConstant, 1)
-	chunk.Write(byte(aConstant), 1)
-	chunk.WriteOpcode(vmchunk.OpConstant, 1)
-	chunk.Write(byte(bConstant), 1)
-	chunk.WriteOpcode(op, 1)
-}
-
-func repl() error {
-	rl, err := readline.New("> ")
+func repl(welcome string) error {
+	rl, err := readline.New(welcome + "> ")
 	if err != nil {
 		return err
 	}
-	defer func() { _ = rl.Close() }()
+	defer ioClose(rl)
 
 	for {
 		line, err := rl.Readline()
-		if errors.Is(err, io.EOF) {
-			return nil
-		}
 		if err != nil {
 			return err
 		}
-		fmt.Printf("<< %s\n", line)
+
+		if value, err := vm.Interpret(welcome, line); err == nil {
+			vmdebug.PrintlnValue(value)
+		} else {
+			fmt.Println(err)
+		}
+	}
+}
+
+func runFile(script string) error {
+	data, err := os.ReadFile(script) //nolint:gosec // ssss
+	if err == nil {
+		_, err = vm.Interpret(script, string(data))
+	}
+	return err
+}
+
+func ioClose(c io.Closer) {
+	if err := c.Close(); err != nil {
+		fmt.Printf("[WARN] close: %s\n", err)
 	}
 }

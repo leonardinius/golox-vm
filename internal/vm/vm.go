@@ -1,9 +1,11 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 	"github.com/leonardinius/goloxvm/internal/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
@@ -20,32 +22,60 @@ type VM struct {
 
 var GlobalVM VM
 
+type InterpretResult int
+
 const (
-	InterpretCompileError InterpretResult = iota
-	InterpretRuntimeError
+	InterpretRuntimeError InterpretResult = iota
 	InterpretSuccess
 )
 
+var errRuntimeError = errors.New("runtime error")
+
 func InitVM() {
 	resetStack()
+	resetChunk()
+}
+
+func FreeVM() {
+	resetStack()
+	resetChunk()
 }
 
 func resetStack() {
 	GlobalVM.StackTop = 0
 }
 
-func FreeVM() {
-}
-
-type InterpretResult int
-
-func Interpret(chunk *vmchunk.Chunk) InterpretResult {
+func initVMChunk(chunk *vmchunk.Chunk) {
 	GlobalVM.Chunk = chunk
 	GlobalVM.IP = 0
-	return Run()
 }
 
-func Run() InterpretResult {
+func resetChunk() {
+	if GlobalVM.Chunk != nil {
+		GlobalVM.Chunk.FreeChunk()
+		GlobalVM.Chunk = nil
+	}
+	GlobalVM.IP = 0
+}
+
+func Interpret(scriptName, code string) (vmvalue.Value, error) {
+	chunk, err := vmcompiler.Compile(code)
+	if err != nil {
+		return vmvalue.NilValue, fmt.Errorf("compile %s: %w", scriptName, err)
+	}
+
+	initVMChunk(&chunk)
+	defer resetChunk()
+
+	vmdebug.DisassembleChunk(GlobalVM.Chunk, scriptName)
+	if value, result := Run(); result == InterpretRuntimeError {
+		return value, errRuntimeError
+	} else {
+		return value, nil
+	}
+}
+
+func Run() (vmvalue.Value, InterpretResult) {
 	if vmdebug.DebugDisassembler {
 		fmt.Printf("")
 		fmt.Println("== trace execution ==")
@@ -88,13 +118,12 @@ func Run() InterpretResult {
 			Pop()
 
 		case vmchunk.OpReturn:
-			vmdebug.PrintValue(Pop())
-			fmt.Println()
-			return InterpretSuccess
+			value := Pop()
+			return value, InterpretSuccess
 
 		default:
 			fmt.Printf("Unexpected instruction %d\n", instruction)
-			return InterpretRuntimeError
+			return vmvalue.NilValue, InterpretRuntimeError
 		}
 	}
 }

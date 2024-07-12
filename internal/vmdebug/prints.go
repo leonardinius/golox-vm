@@ -9,3 +9,8 @@ import (
 func PrintValue(v vmvalue.Value) {
 	fmt.Printf("%g", v)
 }
+
+func PrintlnValue(v vmvalue.Value) {
+	PrintValue(v)
+	fmt.Println()
+}

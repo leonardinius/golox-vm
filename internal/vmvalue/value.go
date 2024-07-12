@@ -4,6 +4,8 @@ import "github.com/leonardinius/goloxvm/internal/vmmem"
 
 type Value float64
 
+const NilValue = Value(0)
+
 type ValueArray []Value
 
 func (va *ValueArray) At(i int) Value {
