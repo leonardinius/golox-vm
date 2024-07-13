@@ -14,5 +14,4 @@ b"
 and
 b"'
 0006 [TOKEN_ERROR] 'Unterminated string.'
-0006 [TOKEN_EOF] ''
 

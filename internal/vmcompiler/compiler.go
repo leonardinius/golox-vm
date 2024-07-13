@@ -2,15 +2,16 @@ package vmcompiler
 
 import (
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vmscanner"
 )
 
 func Compile(source []byte, chunk *vmchunk.Chunk) error {
-	scanner := NewScanner(source)
+	scanner := vmscanner.NewScanner(source)
 	defer scanner.Free()
 
 	advance()
 	expression()
-	consume(TokenEOF, "Expect end of expression.")
+	consume(vmscanner.TokenEOF, "Expect end of expression.")
 
 	return nil
 }
@@ -23,6 +24,6 @@ func expression() {
 	panic("unimplemented")
 }
 
-func consume(tk TokenType, message string) {
+func consume(tk vmscanner.TokenType, message string) {
 	panic("unimplemented")
 }
