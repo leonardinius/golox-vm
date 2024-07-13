@@ -36,7 +36,7 @@ func (chunk *Chunk) InitChunk() {
 	chunk.Lines.Init()
 }
 
-func (chunk *Chunk) FreeChunk() {
+func (chunk *Chunk) Free() {
 	chunk.Code = vmmem.FreeArray(chunk.Code)
 	vmvalue.FreeValueArray(&chunk.Constants)
 	chunk.Lines.Free()

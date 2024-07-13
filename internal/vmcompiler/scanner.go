@@ -16,6 +16,10 @@ func NewScanner(source []byte) Scanner {
 	}
 }
 
+func (s *Scanner) Free() {
+	s.source = nil
+}
+
 func (s *Scanner) ScanToken() Token {
 	s.skipWhitespace()
 

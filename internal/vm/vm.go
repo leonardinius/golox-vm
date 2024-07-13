@@ -51,16 +51,16 @@ func initVMChunk(chunk *vmchunk.Chunk) {
 }
 
 func resetChunk() {
-	if GlobalVM.Chunk != nil {
-		GlobalVM.Chunk.FreeChunk()
-		GlobalVM.Chunk = nil
-	}
+	GlobalVM.Chunk = nil
 	GlobalVM.IP = 0
 }
 
 func Interpret(script string, code []byte) (vmvalue.Value, error) {
-	chunk, err := vmcompiler.Compile(code)
-	if err != nil {
+	chunk := vmchunk.NewChunk()
+	chunk.InitChunk()
+	defer chunk.Free()
+
+	if err := vmcompiler.Compile(code, &chunk); err != nil {
 		return vmvalue.NilValue, fmt.Errorf("compile %s: %w", script, err)
 	}
 

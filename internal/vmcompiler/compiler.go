@@ -7,17 +7,16 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
-func Compile(source []byte) (vmchunk.Chunk, error) {
+func Compile(source []byte, chunk *vmchunk.Chunk) error {
 	scanner := NewScanner(source)
+	defer scanner.Free()
+
 	parseTokens(scanner)
 
-	chunk := vmchunk.NewChunk()
-	chunk.InitChunk()
-
-	AddBinOp(&chunk, vmchunk.OpAdd, 2.0, 3.0)
+	AddBinOp(chunk, vmchunk.OpAdd, 2.0, 3.0)
 	chunk.WriteOpcode(vmchunk.OpReturn, 1)
 
-	return chunk, nil
+	return nil
 }
 
 func parseTokens(scanner Scanner) {
