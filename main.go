@@ -53,7 +53,9 @@ func repl(welcome string) error {
 		if value, err := vm.Interpret(welcome, line); err == nil {
 			vmdebug.PrintlnValue(value)
 		} else {
-			fmt.Println(err)
+			// Do nothing
+			// interpreter reports errors to stderr
+			// fmt.Println(err)
 		}
 	}
 }
