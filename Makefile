@@ -44,7 +44,7 @@ help: ## Display this help
 
 ##@: Build/Run
 
-all: clean go/tidy go/format lint release debug test ## ALL, builds the world
+all: clean go/tidy go/format test lint release debug  ## ALL, builds the world
 
 .PHONY: clean
 clean: ## Clean-up build artifacts

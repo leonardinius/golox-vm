@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
@@ -22,23 +21,36 @@ type VM struct {
 
 var GlobalVM VM
 
-type InterpretResult int
+type InterpretError int
 
 const (
-	InterpretRuntimeError InterpretResult = iota
-	InterpretSuccess
+	_ InterpretError = iota
+	InterpretCompileError
+	InterpretRuntimeError
 )
 
-var errRuntimeError = errors.New("runtime error")
+func (i InterpretError) Error() string {
+	var err string
+	switch i {
+	case InterpretCompileError:
+		err = "compile error"
+	case InterpretRuntimeError:
+		err = "runtime error"
+	default:
+		err = fmt.Sprintf("unknown error %d", i)
+	}
+
+	return err
+}
 
 func InitVM() {
 	resetStack()
-	resetChunk()
+	resetVMChunk()
 }
 
 func FreeVM() {
 	resetStack()
-	resetChunk()
+	resetVMChunk()
 }
 
 func resetStack() {
@@ -50,7 +62,7 @@ func initVMChunk(chunk *vmchunk.Chunk) {
 	GlobalVM.IP = 0
 }
 
-func resetChunk() {
+func resetVMChunk() {
 	GlobalVM.Chunk = nil
 	GlobalVM.IP = 0
 }
@@ -60,22 +72,18 @@ func Interpret(script string, code []byte) (vmvalue.Value, error) {
 	chunk.InitChunk()
 	defer chunk.Free()
 
-	if err := vmcompiler.Compile(code, &chunk); err != nil {
-		return vmvalue.NilValue, fmt.Errorf("compile %s: %w", script, err)
+	if !vmcompiler.Compile(code, &chunk) {
+		return vmvalue.NilValue, InterpretCompileError
 	}
 
 	initVMChunk(&chunk)
-	defer resetChunk()
+	defer resetVMChunk()
 
 	vmdebug.DisassembleChunk(GlobalVM.Chunk, script)
-	if value, result := Run(); result == InterpretRuntimeError {
-		return value, errRuntimeError
-	} else {
-		return value, nil
-	}
+	return Run()
 }
 
-func Run() (vmvalue.Value, InterpretResult) {
+func Run() (vmvalue.Value, error) {
 	if vmdebug.DebugDisassembler {
 		fmt.Println()
 		fmt.Println("== trace execution ==")
@@ -123,7 +131,7 @@ func Run() (vmvalue.Value, InterpretResult) {
 
 		case vmchunk.OpReturn:
 			value := Pop()
-			return value, InterpretSuccess
+			return value, nil
 
 		default:
 			fmt.Printf("Unexpected instruction %d\n", instruction)
