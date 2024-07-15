@@ -11,7 +11,7 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
-var gRules map[tokens.TokenType]*ParseRule
+var rules map[tokens.TokenType]*ParseRule
 
 type Parser struct {
 	current   scanner.Token
@@ -117,13 +117,13 @@ func binary() {
 
 	switch operatorType {
 	case tokens.TokenPlus:
-		emitCode1(bytecode.OpAdd)
+		emitByte(bytecode.OpAdd)
 	case tokens.TokenMinus:
-		emitCode1(bytecode.OpSubtract)
+		emitByte(bytecode.OpSubtract)
 	case tokens.TokenStar:
-		emitCode1(bytecode.OpMultiply)
+		emitByte(bytecode.OpMultiply)
 	case tokens.TokenSlash:
-		emitCode1(bytecode.OpDivide)
+		emitByte(bytecode.OpDivide)
 	default:
 		panic(fmt.Sprintf("Unreachable operator: %s (%d)", operatorType, operatorType))
 	}
@@ -138,14 +138,14 @@ func unary() {
 	// emit the operator instruction
 	switch gParser.previous.Type {
 	case tokens.TokenMinus:
-		emitCode1(bytecode.OpNegate)
+		emitByte(bytecode.OpNegate)
 	default:
 		panic("Unreachable unary: " + gParser.previous.Lexeme())
 	}
 }
 
 func mustGetRule(t tokens.TokenType) *ParseRule {
-	if r, ok := gRules[t]; ok {
+	if r, ok := rules[t]; ok {
 		return r
 	} else {
 		panic(fmt.Sprintf("get rule %s (%d)", t, t))
@@ -189,7 +189,7 @@ func errorAt(token *scanner.Token, message string) {
 }
 
 func init() {
-	gRules = map[tokens.TokenType]*ParseRule{
+	rules = map[tokens.TokenType]*ParseRule{
 		tokens.TokenLeftParen:    {grouping, nil, PrecedenceNone},
 		tokens.TokenRightParen:   {nil, nil, PrecedenceNone},
 		tokens.TokenLeftBrace:    {nil, nil, PrecedenceNone},

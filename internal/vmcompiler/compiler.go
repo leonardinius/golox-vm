@@ -35,17 +35,17 @@ func currentChunk() *vmchunk.Chunk {
 	return gCompilingChunk
 }
 
-func emitCode1(op bytecode.OpCode) {
+func emitByte(op bytecode.OpCode) {
 	currentChunk().WriteOpcode(op, gParser.previous.Line)
 }
 
-func emitCode2(op bytecode.OpCode, b byte) {
+func emitBytes(op bytecode.OpCode, b byte) {
 	currentChunk().WriteOpcode(op, gParser.previous.Line)
 	currentChunk().Write(b, gParser.previous.Line)
 }
 
 func emitConstant(v vmvalue.Value) {
-	emitCode2(bytecode.OpConstant, makeConstant(v))
+	emitBytes(bytecode.OpConstant, makeConstant(v))
 }
 
 func makeConstant(v vmvalue.Value) byte {
@@ -58,7 +58,7 @@ func makeConstant(v vmvalue.Value) byte {
 }
 
 func emitReturn() {
-	emitCode1(bytecode.OpReturn)
+	emitByte(bytecode.OpReturn)
 }
 
 func endCompiler() {
