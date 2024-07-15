@@ -11,8 +11,6 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
-var rules map[tokens.TokenType]*ParseRule
-
 type Parser struct {
 	current   scanner.Token
 	previous  scanner.Token
@@ -44,12 +42,8 @@ const (
 	PrecedencePrimary
 )
 
-func (p ParsePrecedence) Inc() ParsePrecedence {
+func (p ParsePrecedence) Next() ParsePrecedence {
 	return p + 1
-}
-
-func (p ParsePrecedence) Dec() ParsePrecedence {
-	return p - 1
 }
 
 type (
@@ -111,9 +105,14 @@ func grouping() {
 }
 
 func binary() {
+	// the 1st (left) operand has been already parsed and consumed by this point
+
+	// operator type
 	operatorType := gParser.previous.Type
+	// rule for the operator
 	rule := mustGetRule(operatorType)
-	parsePrecedence(rule.precedence.Inc())
+	// parse the second (right) operand
+	parsePrecedence(rule.precedence.Next())
 
 	switch operatorType {
 	case tokens.TokenPlus:
@@ -187,6 +186,8 @@ func errorAt(token *scanner.Token, message string) {
 	fmt.Fprintf(os.Stderr, ": %s\n", message)
 	gParser.hadError = true
 }
+
+var rules map[tokens.TokenType]*ParseRule
 
 func init() {
 	rules = map[tokens.TokenType]*ParseRule{
