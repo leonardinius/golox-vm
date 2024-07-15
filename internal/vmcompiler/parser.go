@@ -117,18 +117,14 @@ func binary() {
 	switch operatorType {
 	case vmscanner.TokenPlus:
 		emitCode1(vmchunk.OpAdd)
-		break
 	case vmscanner.TokenMinus:
 		emitCode1(vmchunk.OpSubtract)
-		break
 	case vmscanner.TokenStar:
 		emitCode1(vmchunk.OpMultiply)
-		break
 	case vmscanner.TokenSlash:
 		emitCode1(vmchunk.OpDivide)
-		break
 	default:
-		return // Unreachable.
+		panic(fmt.Sprintf("Unreachable operator: %s (%d)", operatorType, operatorType))
 	}
 }
 
@@ -193,49 +189,45 @@ func errorAt(token *vmscanner.Token, message string) {
 
 func init() {
 	rules = map[vmscanner.TokenType]*ParseRule{
-		vmscanner.TokenLeftParen:  {grouping, nil, PrecedenceNone},
-		vmscanner.TokenRightParen: {nil, nil, PrecedenceNone},
-		vmscanner.TokenLeftBrace:  {nil, nil, PrecedenceNone},
-		vmscanner.TokenRightBrace: {nil, nil, PrecedenceNone},
-		vmscanner.TokenComma:      {nil, nil, PrecedenceNone},
-		vmscanner.TokenDot:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenMinus:      {unary, binary, PrecedenceTerm},
-		vmscanner.TokenPlus:       {nil, binary, PrecedenceTerm},
-		//	[TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
-		vmscanner.TokenSemicolon: {nil, nil, PrecedenceNone},
-		//	[TOKEN_SLASH]         = {NULL,     binary, PREC_FACTOR},
-		vmscanner.TokenSlash: {nil, binary, PrecedenceFactor},
-		//	[TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
-
-		//	[TOKEN_BANG]          = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_BANG_EQUAL]    = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_EQUAL]         = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_EQUAL_EQUAL]   = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_GREATER]       = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_GREATER_EQUAL] = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_LESS]          = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_LESS_EQUAL]    = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
-		//	[TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
-		//	[TOKEN_FALSE]         = {NULL,     NULL,   PREC_NONE},
-		//
-		// [TOKEN_FOR]           = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_NIL]           = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_OR]            = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_THIS]          = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_TRUE]          = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
-		// [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
+		vmscanner.TokenLeftParen:    {grouping, nil, PrecedenceNone},
+		vmscanner.TokenRightParen:   {nil, nil, PrecedenceNone},
+		vmscanner.TokenLeftBrace:    {nil, nil, PrecedenceNone},
+		vmscanner.TokenRightBrace:   {nil, nil, PrecedenceNone},
+		vmscanner.TokenComma:        {nil, nil, PrecedenceNone},
+		vmscanner.TokenDot:          {nil, nil, PrecedenceNone},
+		vmscanner.TokenMinus:        {unary, binary, PrecedenceTerm},
+		vmscanner.TokenPlus:         {nil, binary, PrecedenceTerm},
+		vmscanner.TokenSemicolon:    {nil, nil, PrecedenceNone},
+		vmscanner.TokenSlash:        {nil, binary, PrecedenceFactor},
+		vmscanner.TokenStar:         {nil, binary, PrecedenceFactor},
+		vmscanner.TokenBang:         {nil, nil, PrecedenceNone},
+		vmscanner.TokenBangEqual:    {nil, nil, PrecedenceNone},
+		vmscanner.TokenEqual:        {nil, nil, PrecedenceNone},
+		vmscanner.TokenEqualEqual:   {nil, nil, PrecedenceNone},
+		vmscanner.TokenGreater:      {nil, nil, PrecedenceNone},
+		vmscanner.TokenGreaterEqual: {nil, nil, PrecedenceNone},
+		vmscanner.TokenLess:         {nil, nil, PrecedenceNone},
+		vmscanner.TokenLessEqual:    {nil, nil, PrecedenceNone},
+		vmscanner.TokenIdentifier:   {nil, nil, PrecedenceNone},
+		vmscanner.TokenString:       {nil, nil, PrecedenceNone},
+		vmscanner.TokenNumber:       {number, nil, PrecedenceNone},
+		vmscanner.TokenAnd:          {nil, nil, PrecedenceNone},
+		vmscanner.TokenClass:        {nil, nil, PrecedenceNone},
+		vmscanner.TokenElse:         {nil, nil, PrecedenceNone},
+		vmscanner.TokenFalse:        {nil, nil, PrecedenceNone},
+		vmscanner.TokenFor:          {nil, nil, PrecedenceNone},
+		vmscanner.TokenFun:          {nil, nil, PrecedenceNone},
+		vmscanner.TokenIf:           {nil, nil, PrecedenceNone},
+		vmscanner.TokenNil:          {nil, nil, PrecedenceNone},
+		vmscanner.TokenOr:           {nil, nil, PrecedenceNone},
+		vmscanner.TokenPrint:        {nil, nil, PrecedenceNone},
+		vmscanner.TokenReturn:       {nil, nil, PrecedenceNone},
+		vmscanner.TokenSuper:        {nil, nil, PrecedenceNone},
+		vmscanner.TokenThis:         {nil, nil, PrecedenceNone},
+		vmscanner.TokenTrue:         {nil, nil, PrecedenceNone},
+		vmscanner.TokenVar:          {nil, nil, PrecedenceNone},
+		vmscanner.TokenWhile:        {nil, nil, PrecedenceNone},
+		vmscanner.TokenError:        {nil, nil, PrecedenceNone},
+		vmscanner.TokenEOF:          {nil, nil, PrecedenceNone},
 	}
 }
