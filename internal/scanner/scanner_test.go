@@ -1,4 +1,4 @@
-package vmscanner_test
+package scanner_test
 
 import (
 	"fmt"
@@ -8,8 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/leonardinius/goloxvm/internal/scanner"
 	"github.com/leonardinius/goloxvm/internal/tests"
-	"github.com/leonardinius/goloxvm/internal/vmscanner"
+	"github.com/leonardinius/goloxvm/internal/tokens"
 )
 
 func TestScanner(t *testing.T) {
@@ -17,11 +18,11 @@ func TestScanner(t *testing.T) {
 	testcases := tests.LoadFromDir(t, "testdata/scanner")
 	for _, tc := range testcases {
 		t.Run("=>/"+filepath.Base(tc.Testcase), func(t *testing.T) {
-			scanner := vmscanner.NewScanner([]byte(tc.Input))
+			s := scanner.NewScanner([]byte(tc.Input))
 			outputs := []string{}
 			for {
-				token := scanner.ScanToken()
-				if token.Type == vmscanner.TokenEOF {
+				token := s.ScanToken()
+				if token.Type == tokens.TokenEOF {
 					break
 				}
 				tokenAsText := fmt.Sprintf("%04d [%s] '%s'", token.Line, token.Type, token.Lexeme())

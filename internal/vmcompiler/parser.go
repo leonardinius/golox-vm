@@ -5,16 +5,17 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/leonardinius/goloxvm/internal/vmchunk"
-	"github.com/leonardinius/goloxvm/internal/vmscanner"
+	"github.com/leonardinius/goloxvm/internal/bytecode"
+	"github.com/leonardinius/goloxvm/internal/scanner"
+	"github.com/leonardinius/goloxvm/internal/tokens"
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
-var rules map[vmscanner.TokenType]*ParseRule
+var gRules map[tokens.TokenType]*ParseRule
 
 type Parser struct {
-	current   vmscanner.Token
-	previous  vmscanner.Token
+	current   scanner.Token
+	previous  scanner.Token
 	hadError  bool
 	panicMode bool
 }
@@ -63,31 +64,31 @@ type ParseRule struct {
 }
 
 func advance() {
-	parser.previous = parser.current
+	gParser.previous = gParser.current
 
 	for {
-		parser.current = scanner.ScanToken()
-		if parser.current.Type != vmscanner.TokenError {
+		gParser.current = gScanner.ScanToken()
+		if gParser.current.Type != tokens.TokenError {
 			break
 		}
 		// use TokenError lexeme as error message
-		errorAtCurrent(parser.current.Lexeme())
+		errorAtCurrent(gParser.current.Lexeme())
 	}
 }
 
 func parsePrecedence(precedence ParsePrecedence) {
 	advance()
 
-	prefixRule := mustGetRule(parser.previous.Type).prefixRule
+	prefixRule := mustGetRule(gParser.previous.Type).prefixRule
 	if prefixRule == nil {
 		errorAtPrev("Expect expression.")
 		return
 	}
 	prefixRule()
 
-	for precedence <= mustGetRule(parser.current.Type).precedence {
+	for precedence <= mustGetRule(gParser.current.Type).precedence {
 		advance()
-		infixRule := mustGetRule(parser.previous.Type).infixRule
+		infixRule := mustGetRule(gParser.previous.Type).infixRule
 		infixRule()
 	}
 }
@@ -97,7 +98,7 @@ func expression() {
 }
 
 func number() {
-	v, err := strconv.ParseFloat(parser.previous.Lexeme(), 64)
+	v, err := strconv.ParseFloat(gParser.previous.Lexeme(), 64)
 	if err != nil {
 		errorAtPrev(err.Error())
 	}
@@ -106,23 +107,23 @@ func number() {
 
 func grouping() {
 	expression()
-	consume(vmscanner.TokenRightParen, "Expect ')' after expression.")
+	consume(tokens.TokenRightParen, "Expect ')' after expression.")
 }
 
 func binary() {
-	operatorType := parser.previous.Type
+	operatorType := gParser.previous.Type
 	rule := mustGetRule(operatorType)
 	parsePrecedence(rule.precedence.Inc())
 
 	switch operatorType {
-	case vmscanner.TokenPlus:
-		emitCode1(vmchunk.OpAdd)
-	case vmscanner.TokenMinus:
-		emitCode1(vmchunk.OpSubtract)
-	case vmscanner.TokenStar:
-		emitCode1(vmchunk.OpMultiply)
-	case vmscanner.TokenSlash:
-		emitCode1(vmchunk.OpDivide)
+	case tokens.TokenPlus:
+		emitCode1(bytecode.OpAdd)
+	case tokens.TokenMinus:
+		emitCode1(bytecode.OpSubtract)
+	case tokens.TokenStar:
+		emitCode1(bytecode.OpMultiply)
+	case tokens.TokenSlash:
+		emitCode1(bytecode.OpDivide)
 	default:
 		panic(fmt.Sprintf("Unreachable operator: %s (%d)", operatorType, operatorType))
 	}
@@ -135,24 +136,24 @@ func unary() {
 	expression()
 
 	// emit the operator instruction
-	switch parser.previous.Type {
-	case vmscanner.TokenMinus:
-		emitCode1(vmchunk.OpNegate)
+	switch gParser.previous.Type {
+	case tokens.TokenMinus:
+		emitCode1(bytecode.OpNegate)
 	default:
-		panic("Unreachable unary: " + parser.previous.Lexeme())
+		panic("Unreachable unary: " + gParser.previous.Lexeme())
 	}
 }
 
-func mustGetRule(t vmscanner.TokenType) *ParseRule {
-	if r, ok := rules[t]; ok {
+func mustGetRule(t tokens.TokenType) *ParseRule {
+	if r, ok := gRules[t]; ok {
 		return r
 	} else {
 		panic(fmt.Sprintf("get rule %s (%d)", t, t))
 	}
 }
 
-func consume(stype vmscanner.TokenType, message string) {
-	if parser.current.Type == stype {
+func consume(stype tokens.TokenType, message string) {
+	if gParser.current.Type == stype {
 		advance()
 		return
 	}
@@ -161,73 +162,73 @@ func consume(stype vmscanner.TokenType, message string) {
 }
 
 func errorAtCurrent(message string) {
-	errorAt(&parser.current, message)
+	errorAt(&gParser.current, message)
 }
 
 func errorAtPrev(message string) {
-	errorAt(&parser.previous, message)
+	errorAt(&gParser.previous, message)
 }
 
-func errorAt(token *vmscanner.Token, message string) {
-	if parser.panicMode {
+func errorAt(token *scanner.Token, message string) {
+	if gParser.panicMode {
 		return
 	}
-	parser.panicMode = true
+	gParser.panicMode = true
 	fmt.Fprintf(os.Stderr, "[line %d] Error", token.Line)
 
-	if token.Type == vmscanner.TokenEOF {
+	if token.Type == tokens.TokenEOF {
 		fmt.Fprintf(os.Stderr, " at end")
-	} else if token.Type == vmscanner.TokenError {
+	} else if token.Type == tokens.TokenError {
 		// Nothing.
 	} else {
 		fmt.Fprintf(os.Stderr, " at '%s'", token.Lexeme())
 	}
 
 	fmt.Fprintf(os.Stderr, ": %s\n", message)
-	parser.hadError = true
+	gParser.hadError = true
 }
 
 func init() {
-	rules = map[vmscanner.TokenType]*ParseRule{
-		vmscanner.TokenLeftParen:    {grouping, nil, PrecedenceNone},
-		vmscanner.TokenRightParen:   {nil, nil, PrecedenceNone},
-		vmscanner.TokenLeftBrace:    {nil, nil, PrecedenceNone},
-		vmscanner.TokenRightBrace:   {nil, nil, PrecedenceNone},
-		vmscanner.TokenComma:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenDot:          {nil, nil, PrecedenceNone},
-		vmscanner.TokenMinus:        {unary, binary, PrecedenceTerm},
-		vmscanner.TokenPlus:         {nil, binary, PrecedenceTerm},
-		vmscanner.TokenSemicolon:    {nil, nil, PrecedenceNone},
-		vmscanner.TokenSlash:        {nil, binary, PrecedenceFactor},
-		vmscanner.TokenStar:         {nil, binary, PrecedenceFactor},
-		vmscanner.TokenBang:         {nil, nil, PrecedenceNone},
-		vmscanner.TokenBangEqual:    {nil, nil, PrecedenceNone},
-		vmscanner.TokenEqual:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenEqualEqual:   {nil, nil, PrecedenceNone},
-		vmscanner.TokenGreater:      {nil, nil, PrecedenceNone},
-		vmscanner.TokenGreaterEqual: {nil, nil, PrecedenceNone},
-		vmscanner.TokenLess:         {nil, nil, PrecedenceNone},
-		vmscanner.TokenLessEqual:    {nil, nil, PrecedenceNone},
-		vmscanner.TokenIdentifier:   {nil, nil, PrecedenceNone},
-		vmscanner.TokenString:       {nil, nil, PrecedenceNone},
-		vmscanner.TokenNumber:       {number, nil, PrecedenceNone},
-		vmscanner.TokenAnd:          {nil, nil, PrecedenceNone},
-		vmscanner.TokenClass:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenElse:         {nil, nil, PrecedenceNone},
-		vmscanner.TokenFalse:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenFor:          {nil, nil, PrecedenceNone},
-		vmscanner.TokenFun:          {nil, nil, PrecedenceNone},
-		vmscanner.TokenIf:           {nil, nil, PrecedenceNone},
-		vmscanner.TokenNil:          {nil, nil, PrecedenceNone},
-		vmscanner.TokenOr:           {nil, nil, PrecedenceNone},
-		vmscanner.TokenPrint:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenReturn:       {nil, nil, PrecedenceNone},
-		vmscanner.TokenSuper:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenThis:         {nil, nil, PrecedenceNone},
-		vmscanner.TokenTrue:         {nil, nil, PrecedenceNone},
-		vmscanner.TokenVar:          {nil, nil, PrecedenceNone},
-		vmscanner.TokenWhile:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenError:        {nil, nil, PrecedenceNone},
-		vmscanner.TokenEOF:          {nil, nil, PrecedenceNone},
+	gRules = map[tokens.TokenType]*ParseRule{
+		tokens.TokenLeftParen:    {grouping, nil, PrecedenceNone},
+		tokens.TokenRightParen:   {nil, nil, PrecedenceNone},
+		tokens.TokenLeftBrace:    {nil, nil, PrecedenceNone},
+		tokens.TokenRightBrace:   {nil, nil, PrecedenceNone},
+		tokens.TokenComma:        {nil, nil, PrecedenceNone},
+		tokens.TokenDot:          {nil, nil, PrecedenceNone},
+		tokens.TokenMinus:        {unary, binary, PrecedenceTerm},
+		tokens.TokenPlus:         {nil, binary, PrecedenceTerm},
+		tokens.TokenSemicolon:    {nil, nil, PrecedenceNone},
+		tokens.TokenSlash:        {nil, binary, PrecedenceFactor},
+		tokens.TokenStar:         {nil, binary, PrecedenceFactor},
+		tokens.TokenBang:         {nil, nil, PrecedenceNone},
+		tokens.TokenBangEqual:    {nil, nil, PrecedenceNone},
+		tokens.TokenEqual:        {nil, nil, PrecedenceNone},
+		tokens.TokenEqualEqual:   {nil, nil, PrecedenceNone},
+		tokens.TokenGreater:      {nil, nil, PrecedenceNone},
+		tokens.TokenGreaterEqual: {nil, nil, PrecedenceNone},
+		tokens.TokenLess:         {nil, nil, PrecedenceNone},
+		tokens.TokenLessEqual:    {nil, nil, PrecedenceNone},
+		tokens.TokenIdentifier:   {nil, nil, PrecedenceNone},
+		tokens.TokenString:       {nil, nil, PrecedenceNone},
+		tokens.TokenNumber:       {number, nil, PrecedenceNone},
+		tokens.TokenAnd:          {nil, nil, PrecedenceNone},
+		tokens.TokenClass:        {nil, nil, PrecedenceNone},
+		tokens.TokenElse:         {nil, nil, PrecedenceNone},
+		tokens.TokenFalse:        {nil, nil, PrecedenceNone},
+		tokens.TokenFor:          {nil, nil, PrecedenceNone},
+		tokens.TokenFun:          {nil, nil, PrecedenceNone},
+		tokens.TokenIf:           {nil, nil, PrecedenceNone},
+		tokens.TokenNil:          {nil, nil, PrecedenceNone},
+		tokens.TokenOr:           {nil, nil, PrecedenceNone},
+		tokens.TokenPrint:        {nil, nil, PrecedenceNone},
+		tokens.TokenReturn:       {nil, nil, PrecedenceNone},
+		tokens.TokenSuper:        {nil, nil, PrecedenceNone},
+		tokens.TokenThis:         {nil, nil, PrecedenceNone},
+		tokens.TokenTrue:         {nil, nil, PrecedenceNone},
+		tokens.TokenVar:          {nil, nil, PrecedenceNone},
+		tokens.TokenWhile:        {nil, nil, PrecedenceNone},
+		tokens.TokenError:        {nil, nil, PrecedenceNone},
+		tokens.TokenEOF:          {nil, nil, PrecedenceNone},
 	}
 }

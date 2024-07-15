@@ -1,4 +1,4 @@
-package vmscanner
+package tokens
 
 type TokenType int
 
@@ -55,7 +55,7 @@ const (
 	TokenEOF
 )
 
-var tokenTypeStrings = map[TokenType]string{
+var gTokenTypeStrings = map[TokenType]string{
 	TokenLeftParen:    "TOKEN_LEFT_PAREN",
 	TokenRightParen:   "TOKEN_RIGHT_PAREN",
 	TokenLeftBrace:    "TOKEN_LEFT_BRACE",
@@ -99,7 +99,7 @@ var tokenTypeStrings = map[TokenType]string{
 }
 
 func (t TokenType) String() string {
-	if str, ok := tokenTypeStrings[t]; ok {
+	if str, ok := gTokenTypeStrings[t]; ok {
 		return str
 	}
 

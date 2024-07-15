@@ -3,47 +3,49 @@ package vmcompiler
 import (
 	"math"
 
+	"github.com/leonardinius/goloxvm/internal/bytecode"
+	"github.com/leonardinius/goloxvm/internal/scanner"
+	"github.com/leonardinius/goloxvm/internal/tokens"
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
-	"github.com/leonardinius/goloxvm/internal/vmscanner"
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
 var (
-	scanner        vmscanner.Scanner
-	parser         Parser
-	compilingChunk *vmchunk.Chunk
+	gScanner        scanner.Scanner
+	gParser         Parser
+	gCompilingChunk *vmchunk.Chunk
 )
 
 func Compile(source []byte, chunk *vmchunk.Chunk) bool {
-	scanner = vmscanner.NewScanner(source)
-	defer scanner.Free()
-	compilingChunk = chunk
+	gScanner = scanner.NewScanner(source)
+	defer gScanner.Free()
+	gCompilingChunk = chunk
 	defer endCompiler()
 
-	parser = NewParser()
+	gParser = NewParser()
 
 	advance()
 	expression()
-	consume(vmscanner.TokenEOF, "Expect end of expression.")
+	consume(tokens.TokenEOF, "Expect end of expression.")
 
-	return !parser.hadError
+	return !gParser.hadError
 }
 
 func currentChunk() *vmchunk.Chunk {
-	return compilingChunk
+	return gCompilingChunk
 }
 
-func emitCode1(op vmchunk.OpCode) {
-	currentChunk().WriteOpcode(op, parser.previous.Line)
+func emitCode1(op bytecode.OpCode) {
+	currentChunk().WriteOpcode(op, gParser.previous.Line)
 }
 
-func emitCode2(op vmchunk.OpCode, b byte) {
-	currentChunk().WriteOpcode(op, parser.previous.Line)
-	currentChunk().Write(b, parser.previous.Line)
+func emitCode2(op bytecode.OpCode, b byte) {
+	currentChunk().WriteOpcode(op, gParser.previous.Line)
+	currentChunk().Write(b, gParser.previous.Line)
 }
 
 func emitConstant(v vmvalue.Value) {
-	emitCode2(vmchunk.OpConstant, makeConstant(v))
+	emitCode2(bytecode.OpConstant, makeConstant(v))
 }
 
 func makeConstant(v vmvalue.Value) byte {
@@ -56,7 +58,7 @@ func makeConstant(v vmvalue.Value) byte {
 }
 
 func emitReturn() {
-	emitCode1(vmchunk.OpReturn)
+	emitCode1(bytecode.OpReturn)
 }
 
 func endCompiler() {

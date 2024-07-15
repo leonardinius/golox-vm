@@ -5,6 +5,7 @@ package vmdebug
 import (
 	"fmt"
 
+	"github.com/leonardinius/goloxvm/internal/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
 )
 
@@ -16,7 +17,7 @@ type stdoutDisassembler struct{}
 var _ Disassembler = (*stdoutDisassembler)(nil)
 
 func init() {
-	dd = &stdoutDisassembler{}
+	gDD = &stdoutDisassembler{}
 }
 
 // DisassembleChunk implements disassemblerMethods.
@@ -38,48 +39,48 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 		fmt.Printf("%4d ", line)
 	}
 
-	instruction := vmchunk.OpCode(chunk.Code[offset])
+	instruction := bytecode.OpCode(chunk.Code[offset])
 	switch instruction {
 
-	case vmchunk.OpConstant:
-		return s.constantInstruction("OP_CONSTANT", chunk, offset)
+	case bytecode.OpConstant:
+		return s.constantInstruction(instruction, chunk, offset)
 
-	case vmchunk.OpAdd:
-		return s.simpleInstruction("OP_ADD", offset)
+	case bytecode.OpAdd:
+		return s.simpleInstruction(instruction, offset)
 
-	case vmchunk.OpSubtract:
-		return s.simpleInstruction("OP_SUBTRACT", offset)
+	case bytecode.OpSubtract:
+		return s.simpleInstruction(instruction, offset)
 
-	case vmchunk.OpMultiply:
-		return s.simpleInstruction("OP_MULTIPLY", offset)
+	case bytecode.OpMultiply:
+		return s.simpleInstruction(instruction, offset)
 
-	case vmchunk.OpDivide:
-		return s.simpleInstruction("OP_DIVIDE", offset)
+	case bytecode.OpDivide:
+		return s.simpleInstruction(instruction, offset)
 
-	case vmchunk.OpNegate:
-		return s.simpleInstruction("OP_NEGATE", offset)
+	case bytecode.OpNegate:
+		return s.simpleInstruction(instruction, offset)
 
-	case vmchunk.OpPop:
-		return s.simpleInstruction("OP_POP", offset)
+	case bytecode.OpPop:
+		return s.simpleInstruction(instruction, offset)
 
-	case vmchunk.OpReturn:
-		return s.simpleInstruction("OP_RETURN", offset)
+	case bytecode.OpReturn:
+		return s.simpleInstruction(instruction, offset)
 
 	default:
-		fmt.Printf("Unknown opcode %d\n", instruction)
+		fmt.Printf("Unknown opcode %s (%d)\n", instruction, instruction)
 		return offset + 1
 	}
 }
 
-func (s *stdoutDisassembler) constantInstruction(name string, chunk *vmchunk.Chunk, offset int) int {
+func (s *stdoutDisassembler) constantInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {
 	constant := chunk.Code[offset+1]
-	fmt.Printf("%-16s %4d '", name, constant)
+	fmt.Printf("%-16s %4d '", op, constant)
 	PrintValue(chunk.Constants.At(int(constant)))
 	fmt.Println("'")
 	return offset + 2
 }
 
-func (s *stdoutDisassembler) simpleInstruction(name string, offset int) int {
-	fmt.Println(name)
+func (s *stdoutDisassembler) simpleInstruction(op bytecode.OpCode, offset int) int {
+	fmt.Println(op.String())
 	return offset + 1
 }

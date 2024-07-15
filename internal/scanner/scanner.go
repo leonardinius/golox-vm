@@ -1,4 +1,6 @@
-package vmscanner
+package scanner
+
+import "github.com/leonardinius/goloxvm/internal/tokens"
 
 type Scanner struct {
 	source  []byte
@@ -25,7 +27,7 @@ func (s *Scanner) ScanToken() Token {
 
 	s.start = s.current
 	if s.isAtEnd() {
-		return s.makeToken(TokenEOF)
+		return s.makeToken(tokens.TokenEOF)
 	}
 
 	c := s.advance()
@@ -38,47 +40,47 @@ func (s *Scanner) ScanToken() Token {
 
 	switch c {
 	case '(':
-		return s.makeToken(TokenLeftParen)
+		return s.makeToken(tokens.TokenLeftParen)
 	case ')':
-		return s.makeToken(TokenRightParen)
+		return s.makeToken(tokens.TokenRightParen)
 	case '{':
-		return s.makeToken(TokenLeftBrace)
+		return s.makeToken(tokens.TokenLeftBrace)
 	case '}':
-		return s.makeToken(TokenRightBrace)
+		return s.makeToken(tokens.TokenRightBrace)
 	case ';':
-		return s.makeToken(TokenSemicolon)
+		return s.makeToken(tokens.TokenSemicolon)
 	case ',':
-		return s.makeToken(TokenComma)
+		return s.makeToken(tokens.TokenComma)
 	case '.':
-		return s.makeToken(TokenDot)
+		return s.makeToken(tokens.TokenDot)
 	case '-':
-		return s.makeToken(TokenMinus)
+		return s.makeToken(tokens.TokenMinus)
 	case '+':
-		return s.makeToken(TokenPlus)
+		return s.makeToken(tokens.TokenPlus)
 	case '/':
-		return s.makeToken(TokenSlash)
+		return s.makeToken(tokens.TokenSlash)
 	case '*':
-		return s.makeToken(TokenStar)
+		return s.makeToken(tokens.TokenStar)
 	case '!':
 		if s.match('=') {
-			return s.makeToken(TokenBangEqual)
+			return s.makeToken(tokens.TokenBangEqual)
 		}
-		return s.makeToken(TokenBang)
+		return s.makeToken(tokens.TokenBang)
 	case '=':
 		if s.match('=') {
-			return s.makeToken(TokenEqualEqual)
+			return s.makeToken(tokens.TokenEqualEqual)
 		}
-		return s.makeToken(TokenEqual)
+		return s.makeToken(tokens.TokenEqual)
 	case '<':
 		if s.match('=') {
-			return s.makeToken(TokenLessEqual)
+			return s.makeToken(tokens.TokenLessEqual)
 		}
-		return s.makeToken(TokenLess)
+		return s.makeToken(tokens.TokenLess)
 	case '>':
 		if s.match('=') {
-			return s.makeToken(TokenGreaterEqual)
+			return s.makeToken(tokens.TokenGreaterEqual)
 		}
-		return s.makeToken(TokenGreater)
+		return s.makeToken(tokens.TokenGreater)
 	case '"':
 		return s.string()
 	}
@@ -157,7 +159,7 @@ func (s *Scanner) string() Token {
 
 	// Consume the closing quote.
 	s.advance()
-	token := s.makeToken(TokenString)
+	token := s.makeToken(tokens.TokenString)
 	// otherwise it will report the token to start ending "
 	// if multiline string - it is wrong
 	token.Line = startLine
@@ -182,72 +184,72 @@ func (s *Scanner) number() Token {
 		}
 	}
 
-	return s.makeToken(TokenNumber)
+	return s.makeToken(tokens.TokenNumber)
 }
 
 func (s *Scanner) isAlpha(c byte) bool {
 	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
-func (s *Scanner) checkKeyword(start, length int, rest string, token TokenType) TokenType {
+func (s *Scanner) checkKeyword(start, length int, rest string, token tokens.TokenType) tokens.TokenType {
 	if s.current-s.start != start+length {
-		return TokenIdentifier
+		return tokens.TokenIdentifier
 	}
 
 	if rest != string(s.source[s.start+start:s.start+start+length]) {
-		return TokenIdentifier
+		return tokens.TokenIdentifier
 	}
 
 	return token
 }
 
-func (s *Scanner) identifierType() TokenType {
+func (s *Scanner) identifierType() tokens.TokenType {
 	switch s.source[s.start] {
 	case 'a':
-		return s.checkKeyword(1, 2, "nd", TokenAnd)
+		return s.checkKeyword(1, 2, "nd", tokens.TokenAnd)
 	case 'c':
-		return s.checkKeyword(1, 4, "lass", TokenClass)
+		return s.checkKeyword(1, 4, "lass", tokens.TokenClass)
 	case 'e':
-		return s.checkKeyword(1, 3, "lse", TokenElse)
+		return s.checkKeyword(1, 3, "lse", tokens.TokenElse)
 	case 'f': // for, fun
 		if s.current-s.start > 1 {
 			switch s.source[s.start+1] {
 			case 'a':
-				return s.checkKeyword(2, 3, "lse", TokenFalse)
+				return s.checkKeyword(2, 3, "lse", tokens.TokenFalse)
 			case 'o':
-				return s.checkKeyword(2, 1, "r", TokenFor)
+				return s.checkKeyword(2, 1, "r", tokens.TokenFor)
 			case 'u':
-				return s.checkKeyword(2, 1, "n", TokenFun)
+				return s.checkKeyword(2, 1, "n", tokens.TokenFun)
 			}
 		}
 	case 'i':
-		return s.checkKeyword(1, 1, "f", TokenIf)
+		return s.checkKeyword(1, 1, "f", tokens.TokenIf)
 	case 'n':
-		return s.checkKeyword(1, 2, "il", TokenNil)
+		return s.checkKeyword(1, 2, "il", tokens.TokenNil)
 	case 'o':
-		return s.checkKeyword(1, 1, "r", TokenOr)
+		return s.checkKeyword(1, 1, "r", tokens.TokenOr)
 	case 'p':
-		return s.checkKeyword(1, 4, "rint", TokenPrint)
+		return s.checkKeyword(1, 4, "rint", tokens.TokenPrint)
 	case 'r':
-		return s.checkKeyword(1, 5, "eturn", TokenReturn)
+		return s.checkKeyword(1, 5, "eturn", tokens.TokenReturn)
 	case 's':
-		return s.checkKeyword(1, 4, "uper", TokenSuper)
+		return s.checkKeyword(1, 4, "uper", tokens.TokenSuper)
 	case 't': // this, true
 		if s.current-s.start > 1 {
 			switch s.source[s.start+1] {
 			case 'h':
-				return s.checkKeyword(2, 2, "is", TokenThis)
+				return s.checkKeyword(2, 2, "is", tokens.TokenThis)
 			case 'r':
-				return s.checkKeyword(2, 2, "ue", TokenTrue)
+				return s.checkKeyword(2, 2, "ue", tokens.TokenTrue)
 			}
 		}
 	case 'v':
-		return s.checkKeyword(1, 2, "ar", TokenVar)
+		return s.checkKeyword(1, 2, "ar", tokens.TokenVar)
 	case 'w':
-		return s.checkKeyword(1, 4, "hile", TokenWhile)
+		return s.checkKeyword(1, 4, "hile", tokens.TokenWhile)
 	}
 
-	return TokenIdentifier
+	return tokens.TokenIdentifier
 }
 
 func (s *Scanner) identifier() Token {
@@ -258,8 +260,8 @@ func (s *Scanner) identifier() Token {
 	return s.makeToken(s.identifierType())
 }
 
-func (s *Scanner) makeToken(token TokenType) Token {
-	return MakeToken(s, token)
+func (s *Scanner) makeToken(tokenType tokens.TokenType) Token {
+	return MakeToken(s, tokenType)
 }
 
 func (s *Scanner) errorToken(message string) Token {

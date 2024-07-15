@@ -1,14 +1,16 @@
-package vmscanner
+package scanner
+
+import "github.com/leonardinius/goloxvm/internal/tokens"
 
 type Token struct {
-	Type   TokenType
+	Type   tokens.TokenType
 	Source []byte
 	Start  int
 	Length int
 	Line   int
 }
 
-func MakeToken(scanner *Scanner, token TokenType) Token {
+func MakeToken(scanner *Scanner, token tokens.TokenType) Token {
 	return Token{
 		Type:   token,
 		Source: scanner.source,
@@ -21,7 +23,7 @@ func MakeToken(scanner *Scanner, token TokenType) Token {
 func MakeErrorToken(scanner *Scanner, message string) Token {
 	bytes := []byte(message)
 	return Token{
-		Type:   TokenError,
+		Type:   tokens.TokenError,
 		Source: bytes,
 		Start:  0,
 		Length: len(bytes),

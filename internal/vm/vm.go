@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 
+	"github.com/leonardinius/goloxvm/internal/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 	"github.com/leonardinius/goloxvm/internal/vmdebug"
@@ -105,31 +106,31 @@ func Run() (vmvalue.Value, error) {
 			vmdebug.DisassembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
 		}
 
-		instruction := vmchunk.OpCode(readByte())
+		instruction := bytecode.OpCode(readByte())
 		switch instruction {
-		case vmchunk.OpConstant:
+		case bytecode.OpConstant:
 			constant := readConstant()
 			Push(constant)
 
-		case vmchunk.OpAdd:
+		case bytecode.OpAdd:
 			binaryOpAdd()
 
-		case vmchunk.OpSubtract:
+		case bytecode.OpSubtract:
 			binaryOpSubtract()
 
-		case vmchunk.OpMultiply:
+		case bytecode.OpMultiply:
 			binaryOpMultiply()
 
-		case vmchunk.OpDivide:
+		case bytecode.OpDivide:
 			binaryOpDivide()
 
-		case vmchunk.OpNegate:
+		case bytecode.OpNegate:
 			Push(-Pop())
 
-		case vmchunk.OpPop:
+		case bytecode.OpPop:
 			Pop()
 
-		case vmchunk.OpReturn:
+		case bytecode.OpReturn:
 			value := Pop()
 			return value, nil
 
