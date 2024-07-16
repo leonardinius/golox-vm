@@ -52,6 +52,10 @@ func IsObj(v Value) bool {
 	return (uint64(v) & (QNAN | SignBit)) == (QNAN | SignBit)
 }
 
+func IsEqual(v1, v2 Value) bool {
+	return v1 == v2
+}
+
 func ValueAsBool(v Value) bool {
 	return v == TrueValue
 }
@@ -60,19 +64,15 @@ func ValueAsNumber(v Value) float64 {
 	return math.Float64frombits(uint64(v))
 }
 
-func NumberValue(num float64) Value {
+func NumberAsValue(num float64) Value {
 	return Value(math.Float64bits(num))
 }
 
-func BoolValue(b bool) Value {
+func BoolAsValue(b bool) Value {
 	if b {
 		return TrueValue
 	}
 	return FalseValue
-}
-
-func IsEqual(v1, v2 Value) bool {
-	return v1 == v2
 }
 
 // #define AS_CSTRING(value) (((ObjString *)AS_OBJ(value))->chars)

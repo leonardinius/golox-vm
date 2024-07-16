@@ -141,7 +141,7 @@ func Run() (vmvalue.Value, error) {
 		case bytecode.OpFalse:
 			Push(vmvalue.FalseValue)
 		case bytecode.OpEqual:
-			Push(vmvalue.BoolValue(vmvalue.IsEqual(Pop(), Pop())))
+			Push(vmvalue.BoolAsValue(vmvalue.IsEqual(Pop(), Pop())))
 		case bytecode.OpGreater:
 			ok = binaryNumCompareOp(binOpGreater)
 		case bytecode.OpLess:
@@ -157,7 +157,7 @@ func Run() (vmvalue.Value, error) {
 		case bytecode.OpNegate:
 			ok = opNegate()
 		case bytecode.OpNot:
-			Push(vmvalue.BoolValue(!isFalsey(Pop())))
+			Push(vmvalue.BoolAsValue(!isFalsey(Pop())))
 		case bytecode.OpPop:
 			Pop()
 		case bytecode.OpReturn:
@@ -192,7 +192,7 @@ func binaryNumMathOp(op func(float64, float64) float64) (ok bool) {
 	return binaryNumOp(func(a vmvalue.Value, b vmvalue.Value) vmvalue.Value {
 		av := vmvalue.ValueAsNumber(a)
 		bv := vmvalue.ValueAsNumber(b)
-		return vmvalue.NumberValue(op(av, bv))
+		return vmvalue.NumberAsValue(op(av, bv))
 	})
 }
 
@@ -200,7 +200,7 @@ func binaryNumCompareOp(op func(float64, float64) bool) (ok bool) {
 	return binaryNumOp(func(a vmvalue.Value, b vmvalue.Value) vmvalue.Value {
 		av := vmvalue.ValueAsNumber(a)
 		bv := vmvalue.ValueAsNumber(b)
-		return vmvalue.BoolValue(op(av, bv))
+		return vmvalue.BoolAsValue(op(av, bv))
 	})
 }
 
@@ -209,7 +209,7 @@ func opNegate() (ok bool) {
 		runtimeError("Operand must be a number.")
 		return ok
 	}
-	Push(vmvalue.NumberValue(-vmvalue.ValueAsNumber(Pop())))
+	Push(vmvalue.NumberAsValue(-vmvalue.ValueAsNumber(Pop())))
 	return ok
 }
 
