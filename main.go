@@ -18,8 +18,8 @@ func main() {
 
 	var err error
 	if len(args) == 0 {
-		fmt.Println("Welcome to the Lox REPL!")
-		err = repl("main")
+		fmt.Println("Welcome to the GoLox-VM REPL!")
+		err = repl("repl")
 	} else if len(args) == 1 {
 		err = runFile(args[0])
 	} else {
@@ -52,9 +52,12 @@ func repl(welcome string) error {
 
 		if value, err := vm.Interpret(welcome, line); err == nil {
 			vmdebug.PrintlnValue(value)
-		} else {
-			fmt.Println(err)
 		}
+		// else {
+		// Do nothing
+		// interpreter reports errors to stderr
+		// fmt.Println(err)
+		//}
 	}
 }
 

@@ -1,9 +1,9 @@
 package vm
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/leonardinius/goloxvm/internal/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 	"github.com/leonardinius/goloxvm/internal/vmdebug"
@@ -22,23 +22,36 @@ type VM struct {
 
 var GlobalVM VM
 
-type InterpretResult int
+type InterpretError int
 
 const (
-	InterpretRuntimeError InterpretResult = iota
-	InterpretSuccess
+	_ InterpretError = iota
+	InterpretCompileError
+	InterpretRuntimeError
 )
 
-var errRuntimeError = errors.New("runtime error")
+func (i InterpretError) Error() string {
+	var err string
+	switch i {
+	case InterpretCompileError:
+		err = "compile error"
+	case InterpretRuntimeError:
+		err = "runtime error"
+	default:
+		err = fmt.Sprintf("unknown error %d", i)
+	}
+
+	return err
+}
 
 func InitVM() {
 	resetStack()
-	resetChunk()
+	resetVMChunk()
 }
 
 func FreeVM() {
 	resetStack()
-	resetChunk()
+	resetVMChunk()
 }
 
 func resetStack() {
@@ -50,76 +63,76 @@ func initVMChunk(chunk *vmchunk.Chunk) {
 	GlobalVM.IP = 0
 }
 
-func resetChunk() {
-	if GlobalVM.Chunk != nil {
-		GlobalVM.Chunk.FreeChunk()
-		GlobalVM.Chunk = nil
-	}
+func resetVMChunk() {
+	GlobalVM.Chunk = nil
 	GlobalVM.IP = 0
 }
 
 func Interpret(script string, code []byte) (vmvalue.Value, error) {
-	chunk, err := vmcompiler.Compile(code)
-	if err != nil {
-		return vmvalue.NilValue, fmt.Errorf("compile %s: %w", script, err)
+	chunk := vmchunk.NewChunk()
+	chunk.InitChunk()
+	defer chunk.Free()
+
+	if !vmcompiler.Compile(code, &chunk) {
+		return vmvalue.NilValue, InterpretCompileError
 	}
 
 	initVMChunk(&chunk)
-	defer resetChunk()
+	defer resetVMChunk()
 
 	vmdebug.DisassembleChunk(GlobalVM.Chunk, script)
-	if value, result := Run(); result == InterpretRuntimeError {
-		return value, errRuntimeError
-	} else {
-		return value, nil
-	}
+	return Run()
 }
 
-func Run() (vmvalue.Value, InterpretResult) {
+func Run() (vmvalue.Value, error) {
 	if vmdebug.DebugDisassembler {
-		fmt.Printf("")
+		fmt.Println()
 		fmt.Println("== trace execution ==")
+
+		defer fmt.Println()
 	}
 
 	for {
 		if vmdebug.DebugDisassembler {
-			fmt.Print("          ")
-			for i := range GlobalVM.StackTop {
-				fmt.Print("[ ")
-				vmdebug.PrintValue(GlobalVM.Stack[i])
-				fmt.Print(" ]")
+			if GlobalVM.StackTop > 0 {
+				fmt.Print("          ")
+				for i := range GlobalVM.StackTop {
+					fmt.Print("[ ")
+					vmdebug.PrintValue(GlobalVM.Stack[i])
+					fmt.Print(" ]")
+				}
+				fmt.Println()
 			}
-			fmt.Println()
 			vmdebug.DisassembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
 		}
 
-		instruction := vmchunk.OpCode(readByte())
+		instruction := bytecode.OpCode(readByte())
 		switch instruction {
-		case vmchunk.OpConstant:
+		case bytecode.OpConstant:
 			constant := readConstant()
 			Push(constant)
 
-		case vmchunk.OpAdd:
+		case bytecode.OpAdd:
 			binaryOpAdd()
 
-		case vmchunk.OpSubtract:
+		case bytecode.OpSubtract:
 			binaryOpSubtract()
 
-		case vmchunk.OpMultiply:
+		case bytecode.OpMultiply:
 			binaryOpMultiply()
 
-		case vmchunk.OpDivide:
+		case bytecode.OpDivide:
 			binaryOpDivide()
 
-		case vmchunk.OpNegate:
+		case bytecode.OpNegate:
 			Push(-Pop())
 
-		case vmchunk.OpPop:
+		case bytecode.OpPop:
 			Pop()
 
-		case vmchunk.OpReturn:
+		case bytecode.OpReturn:
 			value := Pop()
-			return value, InterpretSuccess
+			return value, nil
 
 		default:
 			fmt.Printf("Unexpected instruction %d\n", instruction)

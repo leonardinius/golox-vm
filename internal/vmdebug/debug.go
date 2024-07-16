@@ -9,17 +9,17 @@ type Disassembler interface {
 	DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int
 }
 
-var dd Disassembler = nil
+var gDD Disassembler = nil
 
 func DisassembleChunk(chunk *vmchunk.Chunk, name string) {
 	if DebugDisassembler {
-		dd.DisassembleChunk(chunk, name)
+		gDD.DisassembleChunk(chunk, name)
 	}
 }
 
 func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 	if DebugDisassembler {
-		return dd.DisassembleInstruction(chunk, offset)
+		return gDD.DisassembleInstruction(chunk, offset)
 	}
 	return 0
 }

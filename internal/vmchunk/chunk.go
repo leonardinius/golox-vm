@@ -1,21 +1,9 @@
 package vmchunk
 
 import (
+	"github.com/leonardinius/goloxvm/internal/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vmmem"
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
-)
-
-type OpCode byte
-
-const (
-	OpConstant OpCode = iota
-	OpPop
-	OpAdd
-	OpSubtract
-	OpMultiply
-	OpDivide
-	OpNegate
-	OpReturn
 )
 
 type Chunk struct {
@@ -36,14 +24,14 @@ func (chunk *Chunk) InitChunk() {
 	chunk.Lines.Init()
 }
 
-func (chunk *Chunk) FreeChunk() {
+func (chunk *Chunk) Free() {
 	chunk.Code = vmmem.FreeArray(chunk.Code)
 	vmvalue.FreeValueArray(&chunk.Constants)
 	chunk.Lines.Free()
 	chunk.InitChunk()
 }
 
-func (chunk *Chunk) WriteOpcode(op OpCode, line int) {
+func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {
 	chunk.Write(byte(op), line)
 }
 
