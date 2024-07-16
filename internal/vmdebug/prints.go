@@ -7,7 +7,7 @@ import (
 )
 
 func PrintValue(v vmvalue.Value) {
-	fmt.Printf("%g", v)
+	fmt.Printf("%g", vmvalue.ValueAsNumber(v))
 }
 
 func PrintlnValue(v vmvalue.Value) {

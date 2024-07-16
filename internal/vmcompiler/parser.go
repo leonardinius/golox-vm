@@ -96,7 +96,7 @@ func number() {
 	if err != nil {
 		errorAtPrev(err.Error())
 	}
-	emitConstant(vmvalue.Value(v))
+	emitConstant(vmvalue.NumberValue(v))
 }
 
 func grouping() {

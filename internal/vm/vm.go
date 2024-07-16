@@ -125,7 +125,7 @@ func Run() (vmvalue.Value, error) {
 			binaryOpDivide()
 
 		case bytecode.OpNegate:
-			Push(-Pop())
+			unaryOpNegate()
 
 		case bytecode.OpPop:
 			Pop()
@@ -151,28 +151,33 @@ func Pop() vmvalue.Value {
 	return GlobalVM.Stack[GlobalVM.StackTop]
 }
 
+func unaryOpNegate() {
+	a := vmvalue.ValueAsNumber(Pop())
+	Push(vmvalue.NumberValue(-a))
+}
+
 func binaryOpAdd() {
-	b := Pop()
-	a := Pop()
-	Push(a + b)
+	b := vmvalue.ValueAsNumber(Pop())
+	a := vmvalue.ValueAsNumber(Pop())
+	Push(vmvalue.NumberValue(a + b))
 }
 
 func binaryOpSubtract() {
-	b := Pop()
-	a := Pop()
-	Push(a - b)
+	b := vmvalue.ValueAsNumber(Pop())
+	a := vmvalue.ValueAsNumber(Pop())
+	Push(vmvalue.NumberValue(a - b))
 }
 
 func binaryOpMultiply() {
-	b := Pop()
-	a := Pop()
-	Push(a * b)
+	b := vmvalue.ValueAsNumber(Pop())
+	a := vmvalue.ValueAsNumber(Pop())
+	Push(vmvalue.NumberValue(a * b))
 }
 
 func binaryOpDivide() {
-	b := Pop()
-	a := Pop()
-	Push(a / b)
+	b := vmvalue.ValueAsNumber(Pop())
+	a := vmvalue.ValueAsNumber(Pop())
+	Push(vmvalue.NumberValue(a / b))
 }
 
 func readByte() byte {
