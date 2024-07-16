@@ -129,13 +129,11 @@ func binary() {
 }
 
 func unary() {
+	operatorType := gParser.previous.Type
 	parsePrecedence(PrecedenceUnary)
 
-	// compile the operand
-	expression()
-
 	// emit the operator instruction
-	switch gParser.previous.Type {
+	switch operatorType {
 	case tokens.TokenMinus:
 		emitByte(bytecode.OpNegate)
 	default:
