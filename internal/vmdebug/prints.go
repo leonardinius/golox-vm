@@ -7,7 +7,20 @@ import (
 )
 
 func PrintValue(v vmvalue.Value) {
-	fmt.Printf("%g", v)
+	switch {
+	case vmvalue.IsNumber(v):
+		fmt.Printf("%g", vmvalue.ValueAsNumber(v))
+	case vmvalue.IsNil(v):
+		fmt.Print("nil")
+	case vmvalue.IsBool(v):
+		if vmvalue.ValueAsBool(v) {
+			fmt.Print("true")
+		} else {
+			fmt.Print("false")
+		}
+	default:
+		panic(fmt.Sprintf("unexpected value type: %#v", v))
+	}
 }
 
 func PrintlnValue(v vmvalue.Value) {

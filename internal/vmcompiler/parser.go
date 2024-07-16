@@ -96,12 +96,25 @@ func number() {
 	if err != nil {
 		errorAtPrev(err.Error())
 	}
-	emitConstant(vmvalue.Value(v))
+	emitConstant(vmvalue.NumberValue(v))
 }
 
 func grouping() {
 	expression()
 	consume(tokens.TokenRightParen, "Expect ')' after expression.")
+}
+
+func literal() {
+	switch literalType := gParser.previous.Type; literalType {
+	case tokens.TokenFalse:
+		emitOpcode(bytecode.OpFalse)
+	case tokens.TokenNil:
+		emitOpcode(bytecode.OpNil)
+	case tokens.TokenTrue:
+		emitOpcode(bytecode.OpTrue)
+	default:
+		panic(fmt.Sprintf("unexpected literal type: %s (%d)", literalType, literalType))
+	}
 }
 
 func binary() {
@@ -115,29 +128,41 @@ func binary() {
 	parsePrecedence(rule.precedence.Next())
 
 	switch operatorType {
+	case tokens.TokenBangEqual:
+		emitOpcodes(bytecode.OpEqual, bytecode.OpNot)
+	case tokens.TokenEqualEqual:
+		emitOpcode(bytecode.OpEqual)
+	case tokens.TokenGreater:
+		emitOpcode(bytecode.OpGreater)
+	case tokens.TokenGreaterEqual:
+		emitOpcodes(bytecode.OpLess, bytecode.OpNot)
+	case tokens.TokenLess:
+		emitOpcode(bytecode.OpLess)
+	case tokens.TokenLessEqual:
+		emitOpcodes(bytecode.OpGreater, bytecode.OpNot)
 	case tokens.TokenPlus:
-		emitByte(bytecode.OpAdd)
+		emitOpcode(bytecode.OpAdd)
 	case tokens.TokenMinus:
-		emitByte(bytecode.OpSubtract)
+		emitOpcode(bytecode.OpSubtract)
 	case tokens.TokenStar:
-		emitByte(bytecode.OpMultiply)
+		emitOpcode(bytecode.OpMultiply)
 	case tokens.TokenSlash:
-		emitByte(bytecode.OpDivide)
+		emitOpcode(bytecode.OpDivide)
 	default:
-		panic(fmt.Sprintf("Unreachable operator: %s (%d)", operatorType, operatorType))
+		panic(fmt.Sprintf("unreachable operator: %s (%d)", operatorType, operatorType))
 	}
 }
 
 func unary() {
+	operatorType := gParser.previous.Type
 	parsePrecedence(PrecedenceUnary)
 
-	// compile the operand
-	expression()
-
 	// emit the operator instruction
-	switch gParser.previous.Type {
+	switch operatorType {
+	case tokens.TokenBang:
+		emitOpcode(bytecode.OpNot)
 	case tokens.TokenMinus:
-		emitByte(bytecode.OpNegate)
+		emitOpcode(bytecode.OpNegate)
 	default:
 		panic("Unreachable unary: " + gParser.previous.Lexeme())
 	}
@@ -202,31 +227,31 @@ func init() {
 		tokens.TokenSemicolon:    {nil, nil, PrecedenceNone},
 		tokens.TokenSlash:        {nil, binary, PrecedenceFactor},
 		tokens.TokenStar:         {nil, binary, PrecedenceFactor},
-		tokens.TokenBang:         {nil, nil, PrecedenceNone},
-		tokens.TokenBangEqual:    {nil, nil, PrecedenceNone},
+		tokens.TokenBang:         {unary, nil, PrecedenceNone},
+		tokens.TokenBangEqual:    {nil, binary, PrecedenceEquality},
 		tokens.TokenEqual:        {nil, nil, PrecedenceNone},
-		tokens.TokenEqualEqual:   {nil, nil, PrecedenceNone},
-		tokens.TokenGreater:      {nil, nil, PrecedenceNone},
-		tokens.TokenGreaterEqual: {nil, nil, PrecedenceNone},
-		tokens.TokenLess:         {nil, nil, PrecedenceNone},
-		tokens.TokenLessEqual:    {nil, nil, PrecedenceNone},
+		tokens.TokenEqualEqual:   {nil, binary, PrecedenceEquality},
+		tokens.TokenGreater:      {nil, binary, PrecedenceComparison},
+		tokens.TokenGreaterEqual: {nil, binary, PrecedenceComparison},
+		tokens.TokenLess:         {nil, binary, PrecedenceComparison},
+		tokens.TokenLessEqual:    {nil, binary, PrecedenceComparison},
 		tokens.TokenIdentifier:   {nil, nil, PrecedenceNone},
 		tokens.TokenString:       {nil, nil, PrecedenceNone},
 		tokens.TokenNumber:       {number, nil, PrecedenceNone},
 		tokens.TokenAnd:          {nil, nil, PrecedenceNone},
 		tokens.TokenClass:        {nil, nil, PrecedenceNone},
 		tokens.TokenElse:         {nil, nil, PrecedenceNone},
-		tokens.TokenFalse:        {nil, nil, PrecedenceNone},
+		tokens.TokenFalse:        {literal, nil, PrecedenceNone},
 		tokens.TokenFor:          {nil, nil, PrecedenceNone},
 		tokens.TokenFun:          {nil, nil, PrecedenceNone},
 		tokens.TokenIf:           {nil, nil, PrecedenceNone},
-		tokens.TokenNil:          {nil, nil, PrecedenceNone},
+		tokens.TokenNil:          {literal, nil, PrecedenceNone},
 		tokens.TokenOr:           {nil, nil, PrecedenceNone},
 		tokens.TokenPrint:        {nil, nil, PrecedenceNone},
 		tokens.TokenReturn:       {nil, nil, PrecedenceNone},
 		tokens.TokenSuper:        {nil, nil, PrecedenceNone},
 		tokens.TokenThis:         {nil, nil, PrecedenceNone},
-		tokens.TokenTrue:         {nil, nil, PrecedenceNone},
+		tokens.TokenTrue:         {literal, nil, PrecedenceNone},
 		tokens.TokenVar:          {nil, nil, PrecedenceNone},
 		tokens.TokenWhile:        {nil, nil, PrecedenceNone},
 		tokens.TokenError:        {nil, nil, PrecedenceNone},
