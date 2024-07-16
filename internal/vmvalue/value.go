@@ -71,6 +71,10 @@ func BoolValue(b bool) Value {
 	return FalseValue
 }
 
+func IsEqual(v1, v2 Value) bool {
+	return v1 == v2
+}
+
 // #define AS_CSTRING(value) (((ObjString *)AS_OBJ(value))->chars)
 // #define AS_OBJ(value) ((Obj *)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
 // #define OBJ_VAL(obj) (Value)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
