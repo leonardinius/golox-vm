@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/leonardinius/goloxvm/internal/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
@@ -92,18 +93,13 @@ func Run() (vmvalue.Value, error) {
 		defer fmt.Println()
 	}
 
+	ok := true
 	for {
+		if !ok {
+			return vmvalue.NilValue, InterpretRuntimeError
+		}
 		if vmdebug.DebugDisassembler {
-			if GlobalVM.StackTop > 0 {
-				fmt.Print("          ")
-				for i := range GlobalVM.StackTop {
-					fmt.Print("[ ")
-					vmdebug.PrintValue(GlobalVM.Stack[i])
-					fmt.Print(" ]")
-				}
-				fmt.Println()
-			}
-			vmdebug.DisassembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
+			debug0()
 		}
 
 		instruction := bytecode.OpCode(readByte())
@@ -111,34 +107,38 @@ func Run() (vmvalue.Value, error) {
 		case bytecode.OpConstant:
 			constant := readConstant()
 			Push(constant)
-
 		case bytecode.OpAdd:
-			binaryOpAdd()
-
+			ok = binaryOp(binOpAdd)
 		case bytecode.OpSubtract:
-			binaryOpSubtract()
-
+			ok = binaryOp(binOpSubtract)
 		case bytecode.OpMultiply:
-			binaryOpMultiply()
-
+			ok = binaryOp(binOpMultiply)
 		case bytecode.OpDivide:
-			binaryOpDivide()
-
+			ok = binaryOp(binOpDivide)
 		case bytecode.OpNegate:
-			unaryOpNegate()
-
+			ok = opNegate()
 		case bytecode.OpPop:
 			Pop()
-
 		case bytecode.OpReturn:
 			value := Pop()
 			return value, nil
-
 		default:
-			fmt.Printf("Unexpected instruction %d\n", instruction)
-			return vmvalue.NilValue, InterpretRuntimeError
+			ok = runtimeError("Unexpected instruction")
 		}
 	}
+}
+
+func debug0() {
+	if GlobalVM.StackTop > 0 {
+		fmt.Print("          ")
+		for i := range GlobalVM.StackTop {
+			fmt.Print("[ ")
+			vmdebug.PrintValue(GlobalVM.Stack[i])
+			fmt.Print(" ]")
+		}
+		fmt.Println()
+	}
+	vmdebug.DisassembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
 }
 
 func Push(value vmvalue.Value) {
@@ -151,33 +151,45 @@ func Pop() vmvalue.Value {
 	return GlobalVM.Stack[GlobalVM.StackTop]
 }
 
-func unaryOpNegate() {
-	a := vmvalue.ValueAsNumber(Pop())
-	Push(vmvalue.NumberValue(-a))
+func Peek(distance int) vmvalue.Value {
+	return GlobalVM.Stack[GlobalVM.StackTop-1-distance]
 }
 
-func binaryOpAdd() {
+func binaryOp(op func(float64, float64) float64) (ok bool) {
+	if ok = vmvalue.IsNumber(Peek(0)) && vmvalue.IsNumber(Peek(1)); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+
 	b := vmvalue.ValueAsNumber(Pop())
 	a := vmvalue.ValueAsNumber(Pop())
-	Push(vmvalue.NumberValue(a + b))
+	Push(vmvalue.NumberValue(op(a, b)))
+	return ok
 }
 
-func binaryOpSubtract() {
-	b := vmvalue.ValueAsNumber(Pop())
-	a := vmvalue.ValueAsNumber(Pop())
-	Push(vmvalue.NumberValue(a - b))
+func opNegate() (ok bool) {
+	if ok = vmvalue.IsNumber(Peek(0)); !ok {
+		runtimeError("Operand must be a number.")
+		return ok
+	}
+	Push(vmvalue.NumberValue(-vmvalue.ValueAsNumber(Pop())))
+	return ok
 }
 
-func binaryOpMultiply() {
-	b := vmvalue.ValueAsNumber(Pop())
-	a := vmvalue.ValueAsNumber(Pop())
-	Push(vmvalue.NumberValue(a * b))
+func binOpAdd(a, b float64) float64 {
+	return a + b
 }
 
-func binaryOpDivide() {
-	b := vmvalue.ValueAsNumber(Pop())
-	a := vmvalue.ValueAsNumber(Pop())
-	Push(vmvalue.NumberValue(a / b))
+func binOpSubtract(a, b float64) float64 {
+	return a - b
+}
+
+func binOpMultiply(a, b float64) float64 {
+	return a * b
+}
+
+func binOpDivide(a, b float64) float64 {
+	return a / b
 }
 
 func readByte() byte {
@@ -187,4 +199,15 @@ func readByte() byte {
 
 func readConstant() vmvalue.Value {
 	return GlobalVM.Chunk.Constants.At(int(readByte()))
+}
+
+func runtimeError(format string, messageAndArgs ...any) (ok bool) {
+	fmt.Fprintf(os.Stderr, format, messageAndArgs...)
+	fmt.Fprintln(os.Stderr)
+
+	offset := GlobalVM.IP - 1
+	line := GlobalVM.Chunk.Lines.GetLineByOffset(offset)
+	fmt.Fprintf(os.Stderr, "[line %d] in script\n", line)
+	resetStack()
+	return false
 }
