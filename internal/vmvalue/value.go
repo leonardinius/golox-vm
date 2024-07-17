@@ -2,6 +2,9 @@ package vmvalue
 
 import (
 	"math"
+	"unsafe"
+
+	"github.com/leonardinius/goloxvm/internal/vmobject"
 )
 
 type Value uint64
@@ -53,6 +56,9 @@ func IsObj(v Value) bool {
 }
 
 func IsEqual(v1, v2 Value) bool {
+	if IsObj(v1) || IsObj(v2) {
+		return vmobject.IsObjectsEqual(ValueAsObj(v1), ValueAsObj(v2))
+	}
 	return v1 == v2
 }
 
@@ -75,27 +81,38 @@ func BoolAsValue(b bool) Value {
 	return FalseValue
 }
 
-// #define AS_CSTRING(value) (((ObjString *)AS_OBJ(value))->chars)
-// #define AS_OBJ(value) ((Obj *)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
-// #define OBJ_VAL(obj) (Value)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj))
+func ObjAsValue[T vmobject.VMObjectable](v *T) Value {
+	ptr := uintptr(unsafe.Pointer(v)) //nolint:gosec // unsafe.Pointer is used here
+	return Value(SignBit | QNAN | uint64(ptr))
+}
 
-// static inline bool isObjType(Value value, ObjType type) {
-//     return IS_OBJ(value) && AS_OBJ(value)->type == type;
-// }
-// #define OBJ_TYPE(value) (AS_OBJ(value)->type)
-// #define IS_BOUND_METHOD(value) isObjType(value, OBJ_BOUND_METHOD)
-// #define IS_CLASS(value) isObjType(value, OBJ_CLASS)
-// #define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
-// #define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
-// #define IS_INSTANCE(value) isObjType(value, OBJ_INSTANCE)
-// #define IS_NATIVE(value) isObjType(value, OBJ_NATIVE)
-// #define IS_STRING(value) isObjType(value, OBJ_STRING)
+func ValueAsObjType[T vmobject.VMObjectable](v Value) *T {
+	addr := (uint64(v) & ^(SignBit | QNAN))
+	ptr := uintptr(addr)
+	uptr := (**T)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
+	return *uptr
+}
 
-// #define AS_BOUND_METHOD(value) ((ObjBoundMethod *)AS_OBJ(value))
-// #define AS_CLASS(value) ((ObjClass *)AS_OBJ(value))
-// #define AS_CLOSURE(value) ((ObjClosure *)AS_OBJ(value))
-// #define AS_FUNCTION(value) ((ObjFunction *)AS_OBJ(value))
-// #define AS_INSTANCE(value) ((ObjInstance *)AS_OBJ(value))
-// #define AS_NATIVE(value) (((ObjNative *)AS_OBJ(value))->function)
-// #define AS_STRING(value) ((ObjString *)AS_OBJ(value))
-// #define AS_CSTRING(value) (((ObjString *)AS_OBJ(value))->chars)
+func ValueAsObj(v Value) *vmobject.Obj {
+	return ValueAsObjType[vmobject.Obj](v)
+}
+
+func ObjTypeTag(v Value) vmobject.ObjType {
+	return ValueAsObj(v).Type
+}
+
+func isObjType(v Value, objType vmobject.ObjType) bool {
+	return IsObj(v) && ObjTypeTag(v) == objType
+}
+
+func ValueAsString(v Value) *vmobject.ObjString {
+	return ValueAsObjType[vmobject.ObjString](v)
+}
+
+func ValueAsStringChars(v Value) []byte {
+	return ValueAsObjType[vmobject.ObjString](v).Chars
+}
+
+func IsString(v Value) bool {
+	return isObjType(v, vmobject.ObjTypeString)
+}
