@@ -39,7 +39,7 @@ func emitOpcode(op bytecode.OpCode) {
 	currentChunk().WriteOpcode(op, gParser.previous.Line)
 }
 
-func emitOpcodes(op1 bytecode.OpCode, op2 bytecode.OpCode) {
+func emitOpcodes(op1, op2 bytecode.OpCode) {
 	emitOpcode(op1)
 	emitOpcode(op2)
 }
