@@ -8,6 +8,7 @@ import (
 	"github.com/leonardinius/goloxvm/internal/bytecode"
 	"github.com/leonardinius/goloxvm/internal/scanner"
 	"github.com/leonardinius/goloxvm/internal/tokens"
+	"github.com/leonardinius/goloxvm/internal/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
@@ -96,7 +97,13 @@ func number() {
 	if err != nil {
 		errorAtPrev(err.Error())
 	}
-	emitConstant(vmvalue.NumberValue(v))
+	emitConstant(vmvalue.NumberAsValue(v))
+}
+
+func string_() {
+	t := gParser.previous
+	bytes := t.Source[t.Start+1 : t.Start+t.Length-1]
+	emitConstant(vmvalue.ObjAsValue(vmobject.NewCopyString(bytes)))
 }
 
 func grouping() {
@@ -236,7 +243,7 @@ func init() {
 		tokens.TokenLess:         {nil, binary, PrecedenceComparison},
 		tokens.TokenLessEqual:    {nil, binary, PrecedenceComparison},
 		tokens.TokenIdentifier:   {nil, nil, PrecedenceNone},
-		tokens.TokenString:       {nil, nil, PrecedenceNone},
+		tokens.TokenString:       {string_, nil, PrecedenceNone},
 		tokens.TokenNumber:       {number, nil, PrecedenceNone},
 		tokens.TokenAnd:          {nil, nil, PrecedenceNone},
 		tokens.TokenClass:        {nil, nil, PrecedenceNone},

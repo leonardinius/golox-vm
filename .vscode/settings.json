@@ -23,11 +23,12 @@
       "debug",
     ],
   },
+  "go.vetOnSave": "off",
   "go.formatTool": "goimports",
   "go.testFlags": [
     "-v",
-    "-parallel=4",
-    "-count=1",
+    "-race",
+    //"-count=1",
   ],
   "go.testTimeout": "60s",
   "[go]": {
