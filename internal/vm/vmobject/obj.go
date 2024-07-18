@@ -5,7 +5,7 @@ import (
 	"slices"
 	"unsafe"
 
-	"github.com/leonardinius/goloxvm/internal/vmmem"
+	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
 )
 
 type ObjType byte

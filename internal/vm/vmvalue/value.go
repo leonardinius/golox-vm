@@ -4,9 +4,11 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/leonardinius/goloxvm/internal/vmobject"
+	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 )
 
+// Value we use NaN boxing, NaN tagging here.
+// See https://craftinginterpreters.com/optimization.html.
 type Value uint64
 
 type ValueType byte

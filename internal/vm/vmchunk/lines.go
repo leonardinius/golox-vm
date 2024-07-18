@@ -3,7 +3,7 @@ package vmchunk
 import (
 	"fmt"
 
-	"github.com/leonardinius/goloxvm/internal/vmmem"
+	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
 )
 
 type Lines struct {

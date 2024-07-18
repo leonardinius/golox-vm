@@ -1,6 +1,6 @@
 package scanner
 
-import "github.com/leonardinius/goloxvm/internal/tokens"
+import "github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
 
 type Scanner struct {
 	source  []byte

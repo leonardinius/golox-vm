@@ -1,9 +1,9 @@
 package vmchunk
 
 import (
-	"github.com/leonardinius/goloxvm/internal/bytecode"
-	"github.com/leonardinius/goloxvm/internal/vmmem"
-	"github.com/leonardinius/goloxvm/internal/vmvalue"
+	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
+	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
+	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
 type Chunk struct {
