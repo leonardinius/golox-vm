@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/leonardinius/goloxvm/internal/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
 )
 
 func TestSetOffsetShouldValidateInput(t *testing.T) {

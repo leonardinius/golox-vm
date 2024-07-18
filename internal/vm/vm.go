@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/leonardinius/goloxvm/internal/bytecode"
-	"github.com/leonardinius/goloxvm/internal/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
+	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
+	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
+	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
+	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
-	"github.com/leonardinius/goloxvm/internal/vmdebug"
-	"github.com/leonardinius/goloxvm/internal/vmmem"
-	"github.com/leonardinius/goloxvm/internal/vmobject"
-	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
 const StackMax = 256
@@ -285,4 +285,9 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 	fmt.Fprintf(os.Stderr, "[line %d] in script\n", line)
 	resetStack()
 	return false
+}
+
+func PrintlnValue(v vmvalue.Value) {
+	vmdebug.PrintValue(v)
+	fmt.Println()
 }

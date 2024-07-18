@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/leonardinius/goloxvm/internal/vmobject"
-	"github.com/leonardinius/goloxvm/internal/vmvalue"
+	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
+	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
 func TestObjValueNanBoxing(t *testing.T) {

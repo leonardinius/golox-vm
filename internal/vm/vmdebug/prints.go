@@ -3,8 +3,8 @@ package vmdebug
 import (
 	"fmt"
 
-	"github.com/leonardinius/goloxvm/internal/vmobject"
-	"github.com/leonardinius/goloxvm/internal/vmvalue"
+	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
+	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
 func PrintValue(v vmvalue.Value) {
@@ -24,9 +24,4 @@ func PrintValue(v vmvalue.Value) {
 	default:
 		panic(fmt.Sprintf("unexpected value type: %#v", v))
 	}
-}
-
-func PrintlnValue(v vmvalue.Value) {
-	PrintValue(v)
-	fmt.Println()
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/chzyer/readline"
 
 	"github.com/leonardinius/goloxvm/internal/vm"
-	"github.com/leonardinius/goloxvm/internal/vmdebug"
 )
 
 func main() {
@@ -51,7 +50,7 @@ func repl(welcome string) error {
 		}
 
 		if value, err := vm.Interpret(welcome, line); err == nil {
-			vmdebug.PrintlnValue(value)
+			vm.PrintlnValue(value)
 		}
 		// else {
 		// Do nothing

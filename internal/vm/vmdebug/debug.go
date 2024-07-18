@@ -1,8 +1,6 @@
 package vmdebug
 
-import (
-	"github.com/leonardinius/goloxvm/internal/vmchunk"
-)
+import "github.com/leonardinius/goloxvm/internal/vm/vmchunk"
 
 type Disassembler interface {
 	DisassembleChunk(chunk *vmchunk.Chunk, name string)

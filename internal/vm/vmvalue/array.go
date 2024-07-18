@@ -1,6 +1,6 @@
 package vmvalue
 
-import "github.com/leonardinius/goloxvm/internal/vmmem"
+import "github.com/leonardinius/goloxvm/internal/vm/vmmem"
 
 type ValueArray []Value
 

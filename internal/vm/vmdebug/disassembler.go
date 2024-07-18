@@ -5,8 +5,8 @@ package vmdebug
 import (
 	"fmt"
 
-	"github.com/leonardinius/goloxvm/internal/bytecode"
-	"github.com/leonardinius/goloxvm/internal/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
+	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
 )
 
 const DebugDisassembler = true

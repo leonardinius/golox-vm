@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/leonardinius/goloxvm/internal/scanner"
 	"github.com/leonardinius/goloxvm/internal/tests"
-	"github.com/leonardinius/goloxvm/internal/tokens"
+	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
+	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
 )
 
 func TestScanner(t *testing.T) {

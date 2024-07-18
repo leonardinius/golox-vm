@@ -3,11 +3,11 @@ package vmcompiler
 import (
 	"math"
 
-	"github.com/leonardinius/goloxvm/internal/bytecode"
-	"github.com/leonardinius/goloxvm/internal/scanner"
-	"github.com/leonardinius/goloxvm/internal/tokens"
-	"github.com/leonardinius/goloxvm/internal/vmchunk"
-	"github.com/leonardinius/goloxvm/internal/vmvalue"
+	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
+	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
+	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
+	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
 )
 
 var (
