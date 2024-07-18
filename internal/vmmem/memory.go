@@ -29,12 +29,19 @@ func Reallocate[S ~[]E, E any](s S, oldSize, newSize int) S {
 	return s
 }
 
-func AllocateSlice[E any](count int) []E {
+func AllocateSlice[E any](length int) []E {
 	var empty []E = nil
-	return Reallocate(empty, 0, count)
+	return Reallocate(empty, 0, length)
 }
 
-func AllocateUnsafePtr[E any](count int) unsafe.Pointer {
-	slice := AllocateSlice[E](count)
+func AllocateUnsafePtr[E any](length int) unsafe.Pointer {
+	slice := AllocateSlice[E](length)
 	return unsafe.Pointer(unsafe.SliceData(slice)) //nolint:gosec // return unsafe Pointer here
+}
+
+func FreeUnsafePtr[E any, T any](ptr *T, length int) *T {
+	data := (*E)(unsafe.Pointer(ptr))   //nolint:gosec //  unsafe Pointer here
+	slice := unsafe.Slice(data, length) //nolint:gosec //  unsafe Pointer here
+	FreeArray(slice)
+	return nil
 }

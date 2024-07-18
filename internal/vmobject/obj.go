@@ -28,6 +28,7 @@ type VMObjectable interface {
 
 type Obj struct {
 	Type ObjType
+	Next *Obj
 }
 
 type ObjString struct {
@@ -36,8 +37,9 @@ type ObjString struct {
 }
 
 var (
-	GObjSize       = int(unsafe.Sizeof(Obj{}))
-	GObjStringSize = int(unsafe.Sizeof(ObjString{}))
+	GObjSize            = int(unsafe.Sizeof(Obj{}))
+	GObjStringSize      = int(unsafe.Sizeof(ObjString{}))
+	GRoots         *Obj = nil
 )
 
 func castObject[T VMObjectable](o *Obj) *T {
@@ -46,20 +48,43 @@ func castObject[T VMObjectable](o *Obj) *T {
 
 func AllocateObject[T VMObjectable](objType ObjType, sizeBytes int) *T {
 	ptr := vmmem.AllocateUnsafePtr[byte](sizeBytes)
-	((*Obj)(ptr)).Type = objType
+	object := ((*Obj)(ptr))
+	object.Type = objType
+	object.Next = GRoots
+	GRoots = object
 	return (*T)(ptr)
 }
 
-func NewObjString(chars []byte) *ObjString {
+func FreeObjects() {
+	obj := GRoots
+	for obj != nil {
+		next := obj.Next
+		FreeObject(obj)
+		obj = next
+	}
+}
+
+func FreeObject(obj *Obj) {
+	switch obj.Type {
+	case ObjTypeString:
+		s := castObject[ObjString](obj)
+		vmmem.FreeArray(s.Chars)
+		vmmem.FreeUnsafePtr[byte](s, GObjStringSize)
+	default:
+		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
+	}
+}
+
+func NewTakeString(chars []byte) *ObjString {
 	value := AllocateObject[ObjString](ObjTypeString, GObjStringSize)
 	value.Chars = chars
 	return value
 }
 
-func CopyString(chars []byte) *ObjString {
+func NewCopyString(chars []byte) *ObjString {
 	cloned := vmmem.AllocateSlice[byte](len(chars))
 	copy(cloned, chars)
-	return NewObjString(cloned)
+	return NewTakeString(cloned)
 }
 
 func IsObjectsEqual(a, b *Obj) bool {

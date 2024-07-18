@@ -8,6 +8,8 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmchunk"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 	"github.com/leonardinius/goloxvm/internal/vmdebug"
+	"github.com/leonardinius/goloxvm/internal/vmmem"
+	"github.com/leonardinius/goloxvm/internal/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vmvalue"
 )
 
@@ -19,6 +21,7 @@ type VM struct {
 	IP       int
 	Stack    [StackMax]vmvalue.Value
 	StackTop int
+	Objects  *any
 }
 
 var GlobalVM VM
@@ -47,16 +50,23 @@ func (i InterpretError) Error() string {
 
 func InitVM() {
 	resetStack()
+	resetRootObjects()
 	resetVMChunk()
 }
 
 func FreeVM() {
+	vmobject.FreeObjects()
 	resetStack()
+	resetRootObjects()
 	resetVMChunk()
 }
 
 func resetStack() {
 	GlobalVM.StackTop = 0
+}
+
+func resetRootObjects() {
+	vmobject.GRoots = nil
 }
 
 func initVMChunk(chunk *vmchunk.Chunk) {
@@ -112,6 +122,10 @@ func Peek(distance int) vmvalue.Value {
 	return GlobalVM.Stack[GlobalVM.StackTop-1-distance]
 }
 
+func GCObjects() *vmobject.Obj {
+	return vmobject.GRoots
+}
+
 func Run() (vmvalue.Value, error) {
 	if vmdebug.DebugDisassembler {
 		fmt.Println()
@@ -147,7 +161,13 @@ func Run() (vmvalue.Value, error) {
 		case bytecode.OpLess:
 			ok = binaryNumCompareOp(binOpLess)
 		case bytecode.OpAdd:
-			ok = binaryNumMathOp(binOpAdd)
+			if vmvalue.IsString(Peek(0)) && vmvalue.IsString(Peek(1)) {
+				ok = stringConcat()
+			} else if vmvalue.IsNumber(Peek(0)) && vmvalue.IsNumber(Peek(1)) {
+				ok = binaryNumMathOp(binOpAdd)
+			} else {
+				ok = runtimeError("Operands must be two numbers or two strings.")
+			}
 		case bytecode.OpSubtract:
 			ok = binaryNumMathOp(binOpSubtract)
 		case bytecode.OpMultiply:
@@ -211,6 +231,16 @@ func opNegate() (ok bool) {
 	}
 	Push(vmvalue.NumberAsValue(-vmvalue.ValueAsNumber(Pop())))
 	return ok
+}
+
+func stringConcat() (ok bool) {
+	b := vmvalue.ValueAsString(Pop())
+	a := vmvalue.ValueAsString(Pop())
+	chars := vmmem.AllocateSlice[byte](len(a.Chars) + len(b.Chars))
+	copy(chars, a.Chars)
+	copy(chars[len(a.Chars):], b.Chars)
+	Push(vmvalue.ObjAsValue(vmobject.NewTakeString(chars)))
+	return true
 }
 
 func binOpAdd(a, b float64) float64 {

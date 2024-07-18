@@ -103,7 +103,7 @@ func number() {
 func string_() {
 	t := gParser.previous
 	bytes := t.Source[t.Start+1 : t.Start+t.Length-1]
-	emitConstant(vmvalue.ObjAsValue(vmobject.CopyString(bytes)))
+	emitConstant(vmvalue.ObjAsValue(vmobject.NewCopyString(bytes)))
 }
 
 func grouping() {
