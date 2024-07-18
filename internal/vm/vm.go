@@ -81,7 +81,6 @@ func resetVMChunk() {
 
 func Interpret(script string, code []byte) (vmvalue.Value, error) {
 	chunk := vmchunk.NewChunk()
-	chunk.InitChunk()
 	defer chunk.Free()
 
 	if !vmcompiler.Compile(code, &chunk) {
