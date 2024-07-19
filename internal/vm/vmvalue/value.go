@@ -57,8 +57,8 @@ func IsObj(v Value) bool {
 	return (uint64(v) & (QNAN | SignBit)) == (QNAN | SignBit)
 }
 
-func IsEqual(v1, v2 Value) bool {
-	if IsObj(v1) || IsObj(v2) {
+func IsValuesEqual(v1, v2 Value) bool {
+	if IsObj(v1) && IsObj(v2) {
 		return vmobject.IsObjectsEqual(ValueAsObj(v1), ValueAsObj(v2))
 	}
 	return v1 == v2

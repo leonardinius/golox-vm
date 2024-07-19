@@ -156,7 +156,7 @@ func Run() (vmvalue.Value, error) {
 		case bytecode.OpFalse:
 			Push(vmvalue.FalseValue)
 		case bytecode.OpEqual:
-			Push(vmvalue.BoolAsValue(vmvalue.IsEqual(Pop(), Pop())))
+			Push(vmvalue.BoolAsValue(vmvalue.IsValuesEqual(Pop(), Pop())))
 		case bytecode.OpGreater:
 			ok = binaryNumCompareOp(binOpGreater)
 		case bytecode.OpLess:

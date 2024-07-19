@@ -3,7 +3,6 @@ package vmobject
 import (
 	"fmt"
 	"hash/maphash"
-	"slices"
 	"unsafe"
 
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
@@ -97,12 +96,7 @@ func IsObjectsEqual(a, b *Obj) bool {
 	}
 	switch a.Type {
 	case ObjTypeString:
-		aval := castObject[ObjString](a)
-		bval := castObject[ObjString](b)
-		if aval.Hash != bval.Hash {
-			return false
-		}
-		return slices.Equal(aval.Chars, bval.Chars)
+		return a == b
 	default:
 		panic(fmt.Sprintf("unable to compare object of type %d", a.Type))
 	}
