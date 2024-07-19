@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
+	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
 	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
@@ -21,7 +22,6 @@ type VM struct {
 	IP       int
 	Stack    [StackMax]vmvalue.Value
 	StackTop int
-	Objects  *any
 }
 
 var GlobalVM VM
@@ -49,12 +49,14 @@ func (i InterpretError) Error() string {
 }
 
 func InitVM() {
+	hashtable.InitInternStrings()
 	resetStack()
 	resetRootObjects()
 	resetVMChunk()
 }
 
 func FreeVM() {
+	hashtable.InitInternStrings()
 	vmobject.FreeObjects()
 	resetStack()
 	resetRootObjects()
@@ -81,7 +83,6 @@ func resetVMChunk() {
 
 func Interpret(script string, code []byte) (vmvalue.Value, error) {
 	chunk := vmchunk.NewChunk()
-	chunk.InitChunk()
 	defer chunk.Free()
 
 	if !vmcompiler.Compile(code, &chunk) {
@@ -155,7 +156,7 @@ func Run() (vmvalue.Value, error) {
 		case bytecode.OpFalse:
 			Push(vmvalue.FalseValue)
 		case bytecode.OpEqual:
-			Push(vmvalue.BoolAsValue(vmvalue.IsEqual(Pop(), Pop())))
+			Push(vmvalue.BoolAsValue(vmvalue.IsValuesEqual(Pop(), Pop())))
 		case bytecode.OpGreater:
 			ok = binaryNumCompareOp(binOpGreater)
 		case bytecode.OpLess:
@@ -239,7 +240,8 @@ func stringConcat() (ok bool) {
 	chars := vmmem.AllocateSlice[byte](len(a.Chars) + len(b.Chars))
 	copy(chars, a.Chars)
 	copy(chars[len(a.Chars):], b.Chars)
-	Push(vmvalue.ObjAsValue(vmobject.NewTakeString(chars)))
+	str := hashtable.StringInternTake(chars)
+	Push(vmvalue.ObjAsValue(str))
 	return true
 }
 

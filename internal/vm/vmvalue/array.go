@@ -17,11 +17,10 @@ func (va *ValueArray) Write(v Value) int {
 	return len(*va) - 1
 }
 
-func InitValueArray(va *ValueArray) {
+func (va *ValueArray) Init() {
 	*va = nil
 }
 
-func FreeValueArray(va *ValueArray) {
+func (va *ValueArray) Free() {
 	*va = vmmem.FreeArray(*va)
-	InitValueArray(va)
 }

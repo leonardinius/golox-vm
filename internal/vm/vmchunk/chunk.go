@@ -14,21 +14,23 @@ type Chunk struct {
 }
 
 func NewChunk() Chunk {
-	return Chunk{}
+	chunk := Chunk{}
+	chunk.resetChunk()
+	return chunk
 }
 
-func (chunk *Chunk) InitChunk() {
+func (chunk *Chunk) resetChunk() {
 	chunk.Code = nil
 	chunk.Count = 0
-	vmvalue.InitValueArray(&chunk.Constants)
+	chunk.Constants.Init()
 	chunk.Lines.Init()
 }
 
 func (chunk *Chunk) Free() {
 	chunk.Code = vmmem.FreeArray(chunk.Code)
-	vmvalue.FreeValueArray(&chunk.Constants)
+	chunk.Constants.Free()
 	chunk.Lines.Free()
-	chunk.InitChunk()
+	chunk.resetChunk()
 }
 
 func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {
