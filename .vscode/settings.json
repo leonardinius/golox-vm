@@ -27,8 +27,8 @@
   "go.formatTool": "goimports",
   "go.testFlags": [
     "-v",
-    "-race",
-    //"-count=1",
+    // "-race",
+    "-count=1",
   ],
   "go.testTimeout": "60s",
   "[go]": {

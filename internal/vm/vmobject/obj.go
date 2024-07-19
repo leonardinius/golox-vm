@@ -2,6 +2,7 @@ package vmobject
 
 import (
 	"fmt"
+	"hash/maphash"
 	"slices"
 	"unsafe"
 
@@ -34,12 +35,14 @@ type Obj struct {
 type ObjString struct {
 	Obj
 	Chars []byte
+	Hash  uint64
 }
 
 var (
-	GObjSize            = int(unsafe.Sizeof(Obj{}))
-	GObjStringSize      = int(unsafe.Sizeof(ObjString{}))
-	GRoots         *Obj = nil
+	GObjSize       = int(unsafe.Sizeof(Obj{}))
+	GObjStringSize = int(unsafe.Sizeof(ObjString{}))
+	GRoots         = (*Obj)(nil)
+	gSeed          = maphash.MakeSeed()
 )
 
 func castObject[T VMObjectable](o *Obj) *T {
@@ -75,16 +78,17 @@ func FreeObject(obj *Obj) {
 	}
 }
 
-func NewTakeString(chars []byte) *ObjString {
+func NewTakeString(chars []byte, hash uint64) *ObjString {
 	value := AllocateObject[ObjString](ObjTypeString, GObjStringSize)
 	value.Chars = chars
+	value.Hash = hash
 	return value
 }
 
-func NewCopyString(chars []byte) *ObjString {
+func NewCopyString(chars []byte, hash uint64) *ObjString {
 	cloned := vmmem.AllocateSlice[byte](len(chars))
 	copy(cloned, chars)
-	return NewTakeString(cloned)
+	return NewTakeString(cloned, hash)
 }
 
 func IsObjectsEqual(a, b *Obj) bool {
@@ -95,6 +99,9 @@ func IsObjectsEqual(a, b *Obj) bool {
 	case ObjTypeString:
 		aval := castObject[ObjString](a)
 		bval := castObject[ObjString](b)
+		if aval.Hash != bval.Hash {
+			return false
+		}
 		return slices.Equal(aval.Chars, bval.Chars)
 	default:
 		panic(fmt.Sprintf("unable to compare object of type %d", a.Type))
@@ -109,4 +116,8 @@ func PrintObject(obj *Obj) {
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}
+}
+
+func HashString(chars []byte) uint64 {
+	return maphash.Bytes(gSeed, chars)
 }

@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
+	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
@@ -102,8 +102,9 @@ func number() {
 
 func string_() {
 	t := gParser.previous
-	bytes := t.Source[t.Start+1 : t.Start+t.Length-1]
-	emitConstant(vmvalue.ObjAsValue(vmobject.NewCopyString(bytes)))
+	chars := t.Source[t.Start+1 : t.Start+t.Length-1]
+	str := hashtable.StringInternCopy(chars)
+	emitConstant(vmvalue.ObjAsValue(str))
 }
 
 func grouping() {
