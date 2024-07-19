@@ -58,8 +58,8 @@ func IsObj(v Value) bool {
 }
 
 func IsValuesEqual(v1, v2 Value) bool {
-	if IsObj(v1) && IsObj(v2) {
-		return vmobject.IsObjectsEqual(ValueAsObj(v1), ValueAsObj(v2))
+	if IsNumber(v1) && IsNumber(v2) {
+		return ValueAsNumber(v1) == ValueAsNumber(v2)
 	}
 	return v1 == v2
 }

@@ -90,18 +90,6 @@ func NewCopyString(chars []byte, hash uint64) *ObjString {
 	return NewTakeString(cloned, hash)
 }
 
-func IsObjectsEqual(a, b *Obj) bool {
-	if a.Type != b.Type {
-		return false
-	}
-	switch a.Type {
-	case ObjTypeString:
-		return a == b
-	default:
-		panic(fmt.Sprintf("unable to compare object of type %d", a.Type))
-	}
-}
-
 func PrintObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
