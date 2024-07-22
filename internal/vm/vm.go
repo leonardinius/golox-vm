@@ -103,7 +103,7 @@ func debug0() {
 		fmt.Print("          ")
 		for i := range GlobalVM.StackTop {
 			fmt.Print("[ ")
-			vmdebug.DebugValue(GlobalVM.Stack[i])
+			vmdebug.PrintValue(GlobalVM.Stack[i])
 			fmt.Print(" ]")
 		}
 		fmt.Println()
@@ -316,21 +316,5 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 }
 
 func PrintlnValue(v vmvalue.Value) {
-	switch {
-	case vmvalue.IsNumber(v):
-		fmt.Printf("%g", vmvalue.ValueAsNumber(v))
-	case vmvalue.IsNil(v):
-		fmt.Print("nil")
-	case vmvalue.IsBool(v):
-		if vmvalue.ValueAsBool(v) {
-			fmt.Print("true")
-		} else {
-			fmt.Print("false")
-		}
-	case vmvalue.IsObj(v):
-		vmobject.PrintObject(vmvalue.ValueAsObj(v))
-	default:
-		panic(fmt.Sprintf("unexpected value type: %#v", v))
-	}
-	fmt.Println()
+	vmdebug.PrintlnValue(v)
 }
