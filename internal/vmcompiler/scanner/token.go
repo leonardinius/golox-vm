@@ -31,6 +31,10 @@ func MakeErrorToken(scanner *Scanner, message string) Token {
 	}
 }
 
-func (t *Token) Lexeme() string {
+func (t *Token) LexemeAsString() string {
 	return string(t.Source[t.Start : t.Start+t.Length])
+}
+
+func (t *Token) Lexeme() []byte {
+	return t.Source[t.Start : t.Start+t.Length]
 }

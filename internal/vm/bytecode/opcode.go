@@ -10,35 +10,41 @@ const (
 	OpNil
 	OpTrue
 	OpFalse
+	OpPop
+	OpGetGlobal
+	OpDefineGlobal
 	OpEqual
 	OpGreater
 	OpLess
-	OpPop
 	OpAdd
 	OpSubtract
 	OpMultiply
 	OpDivide
 	OpNot
 	OpNegate
+	OpPrint
 	OpReturn
 )
 
 var gOpCodeStrings = map[OpCode]string{
-	OpConstant: "OP_CONSTANT",
-	OpNil:      "OP_NIL",
-	OpTrue:     "OP_TRUE",
-	OpFalse:    "OP_FALSE",
-	OpEqual:    "OP_EQUAL",
-	OpGreater:  "OP_GREATER",
-	OpLess:     "OP_LESS",
-	OpPop:      "OP_POP",
-	OpAdd:      "OP_ADD",
-	OpSubtract: "OP_SUBTRACT",
-	OpMultiply: "OP_MULTIPLY",
-	OpDivide:   "OP_DIVIDE",
-	OpNot:      "OP_NOT",
-	OpNegate:   "OP_NEGATE",
-	OpReturn:   "OP_RETURN",
+	OpConstant:     "OP_CONSTANT",
+	OpNil:          "OP_NIL",
+	OpTrue:         "OP_TRUE",
+	OpFalse:        "OP_FALSE",
+	OpEqual:        "OP_EQUAL",
+	OpGreater:      "OP_GREATER",
+	OpLess:         "OP_LESS",
+	OpPop:          "OP_POP",
+	OpGetGlobal:    "OP_GET_GLOBAL",
+	OpDefineGlobal: "OP_DEFINE_GLOBAL",
+	OpAdd:          "OP_ADD",
+	OpSubtract:     "OP_SUBTRACT",
+	OpMultiply:     "OP_MULTIPLY",
+	OpDivide:       "OP_DIVIDE",
+	OpNot:          "OP_NOT",
+	OpNegate:       "OP_NEGATE",
+	OpPrint:        "OP_PRINT",
+	OpReturn:       "OP_RETURN",
 }
 
 func (op OpCode) String() string {

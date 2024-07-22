@@ -50,12 +50,14 @@ func (i InterpretError) Error() string {
 
 func InitVM() {
 	hashtable.InitInternStrings()
+	hashtable.InitGlobals()
 	resetStack()
 	resetRootObjects()
 	resetVMChunk()
 }
 
 func FreeVM() {
+	hashtable.FreeGlobals()
 	hashtable.InitInternStrings()
 	vmobject.FreeObjects()
 	resetStack()
@@ -101,7 +103,7 @@ func debug0() {
 		fmt.Print("          ")
 		for i := range GlobalVM.StackTop {
 			fmt.Print("[ ")
-			vmdebug.PrintValue(GlobalVM.Stack[i])
+			vmdebug.DebugValue(GlobalVM.Stack[i])
 			fmt.Print(" ]")
 		}
 		fmt.Println()
@@ -121,6 +123,14 @@ func Pop() vmvalue.Value {
 
 func Peek(distance int) vmvalue.Value {
 	return GlobalVM.Stack[GlobalVM.StackTop-1-distance]
+}
+
+func SetGlobal(name *vmobject.ObjString, value vmvalue.Value) {
+	hashtable.SetGlobal(name, value)
+}
+
+func GetGlobal(name *vmobject.ObjString) (vmvalue.Value, bool) {
+	return hashtable.GetGlobal(name)
 }
 
 func GCObjects() *vmobject.Obj {
@@ -181,9 +191,21 @@ func Run() (vmvalue.Value, error) {
 			Push(vmvalue.BoolAsValue(!isFalsey(Pop())))
 		case bytecode.OpPop:
 			Pop()
+		case bytecode.OpPrint:
+			PrintlnValue(Pop())
+		case bytecode.OpGetGlobal:
+			name := readString()
+			if value, gok := GetGlobal(name); !gok {
+				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
+			} else {
+				Push(value)
+			}
+		case bytecode.OpDefineGlobal:
+			name := readString()
+			SetGlobal(name, Peek(0))
+			Pop()
 		case bytecode.OpReturn:
-			value := Pop()
-			return value, nil
+			return Pop(), nil
 		default:
 			ok = runtimeError("Unexpected instruction")
 		}
@@ -278,6 +300,10 @@ func readConstant() vmvalue.Value {
 	return GlobalVM.Chunk.Constants.At(int(readByte()))
 }
 
+func readString() *vmobject.ObjString {
+	return vmvalue.ValueAsString(readConstant())
+}
+
 func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 	fmt.Fprintf(os.Stderr, format, messageAndArgs...)
 	fmt.Fprintln(os.Stderr)
@@ -290,6 +316,21 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 }
 
 func PrintlnValue(v vmvalue.Value) {
-	vmdebug.PrintValue(v)
+	switch {
+	case vmvalue.IsNumber(v):
+		fmt.Printf("%g", vmvalue.ValueAsNumber(v))
+	case vmvalue.IsNil(v):
+		fmt.Print("nil")
+	case vmvalue.IsBool(v):
+		if vmvalue.ValueAsBool(v) {
+			fmt.Print("true")
+		} else {
+			fmt.Print("false")
+		}
+	case vmvalue.IsObj(v):
+		vmobject.PrintObject(vmvalue.ValueAsObj(v))
+	default:
+		panic(fmt.Sprintf("unexpected value type: %#v", v))
+	}
 	fmt.Println()
 }

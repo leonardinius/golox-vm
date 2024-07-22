@@ -7,7 +7,7 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
-func PrintValue(v vmvalue.Value) {
+func DebugValue(v vmvalue.Value) {
 	switch {
 	case vmvalue.IsNumber(v):
 		fmt.Printf("%g", vmvalue.ValueAsNumber(v))
@@ -20,8 +20,13 @@ func PrintValue(v vmvalue.Value) {
 			fmt.Print("false")
 		}
 	case vmvalue.IsObj(v):
-		vmobject.PrintObject(vmvalue.ValueAsObj(v))
+		vmobject.DebugObject(vmvalue.ValueAsObj(v))
 	default:
 		panic(fmt.Sprintf("unexpected value type: %#v", v))
 	}
+}
+
+func DebuglnValue(v vmvalue.Value) {
+	DebugValue(v)
+	fmt.Println()
 }

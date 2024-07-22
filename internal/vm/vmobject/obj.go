@@ -90,11 +90,21 @@ func NewCopyString(chars []byte, hash uint64) *ObjString {
 	return NewTakeString(cloned, hash)
 }
 
-func PrintObject(obj *Obj) {
+func DebugObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
 		svalue := string(castObject[ObjString](obj).Chars)
 		fmt.Print("\"" + svalue + "\"")
+	default:
+		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
+	}
+}
+
+func PrintObject(obj *Obj) {
+	switch obj.Type {
+	case ObjTypeString:
+		value := string(castObject[ObjString](obj).Chars)
+		fmt.Print(value)
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}
