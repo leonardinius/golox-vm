@@ -36,13 +36,17 @@ func (h *Table) Free() {
 	h.reset()
 }
 
+func (h *Table) Count() int {
+	return h.count
+}
+
 func (h *Table) Set(
 	key *vmobject.ObjString,
 	value vmvalue.Value,
 ) bool {
-	loadLimit := int(float64(cap(h.entries)) * TableMaxLoad)
+	loadLimit := int(float64(len(h.entries)) * TableMaxLoad)
 	if h.count+1 > loadLimit {
-		capacity := vmmem.GrowCapacity(cap(h.entries))
+		capacity := vmmem.GrowCapacity(len(h.entries))
 		h.adjustCapacity(capacity)
 	}
 
@@ -61,7 +65,7 @@ func (h *Table) Set(
 }
 
 func (h *Table) findEntry(entries []entry, key *vmobject.ObjString) *entry {
-	capacity := uint64(cap(entries))
+	capacity := uint64(len(entries))
 	index := key.Hash % capacity
 	var tombstone *entry = nil
 	for {
@@ -84,9 +88,10 @@ func (h *Table) findEntry(entries []entry, key *vmobject.ObjString) *entry {
 
 func (h *Table) adjustCapacity(capacity int) {
 	entries := vmmem.GrowArray(h.entries, capacity)
-	for i := range cap(entries) {
-		entries[i].key = nil
-		entries[i].value = vmvalue.NilValue
+	for i := range entries {
+		el := &entries[i]
+		el.key = nil
+		el.value = vmvalue.NilValue
 	}
 
 	h.count = 0
@@ -96,7 +101,7 @@ func (h *Table) adjustCapacity(capacity int) {
 			continue
 		}
 
-		dest := h.findEntry(h.entries, el.key)
+		dest := h.findEntry(entries, el.key)
 		dest.key = el.key
 		dest.value = el.value
 		h.count++
@@ -115,16 +120,16 @@ func (h *Table) PutAll(from *Table) {
 	}
 }
 
-func (h *Table) Get(key *vmobject.ObjString) (*vmvalue.Value, bool) {
+func (h *Table) Get(key *vmobject.ObjString) (vmvalue.Value, bool) {
 	if h.count == 0 {
-		return nil, false
+		return vmvalue.NilValue, false
 	}
 
 	if el := h.findEntry(h.entries, key); el.key != nil {
-		return &el.value, true
+		return el.value, true
 	}
 
-	return nil, false
+	return vmvalue.NilValue, false
 }
 
 func (h *Table) Delete(key *vmobject.ObjString) bool {
@@ -139,6 +144,7 @@ func (h *Table) Delete(key *vmobject.ObjString) bool {
 
 	el.key = nil
 	el.value = vmvalue.BoolAsValue(true)
+	h.count--
 	return true
 }
 
@@ -147,7 +153,7 @@ func (h *Table) findString(chars []byte, hash uint64) *vmobject.ObjString {
 		return nil
 	}
 
-	capacity := uint64(cap(h.entries))
+	capacity := uint64(len(h.entries))
 	index := hash % capacity
 	for {
 		el := &h.entries[index]

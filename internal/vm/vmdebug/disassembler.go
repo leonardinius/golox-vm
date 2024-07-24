@@ -41,7 +41,10 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 
 	instruction := bytecode.OpCode(chunk.Code[offset])
 	switch instruction {
-	case bytecode.OpConstant:
+	case bytecode.OpConstant,
+		bytecode.OpGetGlobal,
+		bytecode.OpSetGlobal,
+		bytecode.OpDefineGlobal:
 		return s.constantInstruction(instruction, chunk, offset)
 	case bytecode.OpNil,
 		bytecode.OpTrue,
@@ -56,6 +59,7 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 		bytecode.OpNot,
 		bytecode.OpNegate,
 		bytecode.OpPop,
+		bytecode.OpPrint,
 		bytecode.OpReturn:
 		return s.simpleInstruction(instruction, offset)
 	default:

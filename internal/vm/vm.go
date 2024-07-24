@@ -50,12 +50,14 @@ func (i InterpretError) Error() string {
 
 func InitVM() {
 	hashtable.InitInternStrings()
+	hashtable.InitGlobals()
 	resetStack()
 	resetRootObjects()
 	resetVMChunk()
 }
 
 func FreeVM() {
+	hashtable.FreeGlobals()
 	hashtable.InitInternStrings()
 	vmobject.FreeObjects()
 	resetStack()
@@ -123,6 +125,18 @@ func Peek(distance int) vmvalue.Value {
 	return GlobalVM.Stack[GlobalVM.StackTop-1-distance]
 }
 
+func SetGlobal(name *vmobject.ObjString, value vmvalue.Value) bool {
+	return hashtable.SetGlobal(name, value)
+}
+
+func GetGlobal(name *vmobject.ObjString) (vmvalue.Value, bool) {
+	return hashtable.GetGlobal(name)
+}
+
+func DeleteGlobal(name *vmobject.ObjString) bool {
+	return hashtable.DeleteGlobal(name)
+}
+
 func GCObjects() *vmobject.Obj {
 	return vmobject.GRoots
 }
@@ -155,6 +169,12 @@ func Run() (vmvalue.Value, error) {
 			Push(vmvalue.TrueValue)
 		case bytecode.OpFalse:
 			Push(vmvalue.FalseValue)
+		case bytecode.OpSetGlobal:
+			name := readString()
+			if isNewKey := SetGlobal(name, Peek(0)); isNewKey {
+				DeleteGlobal(name)
+				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
+			}
 		case bytecode.OpEqual:
 			Push(vmvalue.BoolAsValue(vmvalue.IsValuesEqual(Pop(), Pop())))
 		case bytecode.OpGreater:
@@ -181,9 +201,21 @@ func Run() (vmvalue.Value, error) {
 			Push(vmvalue.BoolAsValue(!isFalsey(Pop())))
 		case bytecode.OpPop:
 			Pop()
+		case bytecode.OpPrint:
+			PrintlnValue(Pop())
+		case bytecode.OpGetGlobal:
+			name := readString()
+			if value, gok := GetGlobal(name); !gok {
+				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
+			} else {
+				Push(value)
+			}
+		case bytecode.OpDefineGlobal:
+			name := readString()
+			SetGlobal(name, Peek(0))
+			Pop()
 		case bytecode.OpReturn:
-			value := Pop()
-			return value, nil
+			return Pop(), nil
 		default:
 			ok = runtimeError("Unexpected instruction")
 		}
@@ -278,6 +310,10 @@ func readConstant() vmvalue.Value {
 	return GlobalVM.Chunk.Constants.At(int(readByte()))
 }
 
+func readString() *vmobject.ObjString {
+	return vmvalue.ValueAsString(readConstant())
+}
+
 func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 	fmt.Fprintf(os.Stderr, format, messageAndArgs...)
 	fmt.Fprintln(os.Stderr)
@@ -290,6 +326,5 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 }
 
 func PrintlnValue(v vmvalue.Value) {
-	vmdebug.PrintValue(v)
-	fmt.Println()
+	vmdebug.PrintlnValue(v)
 }

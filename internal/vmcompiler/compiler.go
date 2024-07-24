@@ -25,8 +25,10 @@ func Compile(source []byte, chunk *vmchunk.Chunk) bool {
 	gParser = NewParser()
 
 	advance()
-	expression()
-	consume(tokens.TokenEOF, "Expect end of expression.")
+
+	for !match(tokens.TokenEOF) {
+		declaration()
+	}
 
 	return !gParser.hadError
 }
@@ -63,6 +65,7 @@ func makeConstant(v vmvalue.Value) byte {
 }
 
 func emitReturn() {
+	emitOpcode(bytecode.OpNil)
 	emitOpcode(bytecode.OpReturn)
 }
 

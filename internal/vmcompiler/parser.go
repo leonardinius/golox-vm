@@ -47,14 +47,17 @@ func (p ParsePrecedence) Next() ParsePrecedence {
 	return p + 1
 }
 
+func (p ParsePrecedence) CanAssign() bool {
+	return p <= PrecedenceAssignment
+}
+
 type (
-	ParseFn      func()
-	InfixParseFn func()
+	ParseFn func(precedence ParsePrecedence)
 )
 
 type ParseRule struct {
 	prefixRule ParseFn
-	infixRule  InfixParseFn
+	infixRule  ParseFn
 	precedence ParsePrecedence
 }
 
@@ -67,7 +70,7 @@ func advance() {
 			break
 		}
 		// use TokenError lexeme as error message
-		errorAtCurrent(gParser.current.Lexeme())
+		errorAtCurrent(gParser.current.LexemeAsString())
 	}
 }
 
@@ -79,40 +82,140 @@ func parsePrecedence(precedence ParsePrecedence) {
 		errorAtPrev("Expect expression.")
 		return
 	}
-	prefixRule()
+	prefixRule(precedence)
 
 	for precedence <= mustGetRule(gParser.current.Type).precedence {
 		advance()
 		infixRule := mustGetRule(gParser.previous.Type).infixRule
-		infixRule()
+		infixRule(precedence)
 	}
+
+	if precedence.CanAssign() && match(tokens.TokenEqual) {
+		errorAtPrev("Invalid assignment target.")
+	}
+}
+
+func identifierConstant(token *scanner.Token) byte {
+	return makeConstant(vmvalue.ObjAsValue(hashtable.StringInternCopy(token.Lexeme())))
+}
+
+func parseVariable(errorMessage string) byte {
+	consume(tokens.TokenIdentifier, errorMessage)
+	return identifierConstant(&gParser.previous)
+}
+
+func defineVariable(global byte) {
+	emitBytes(bytecode.OpDefineGlobal, global)
 }
 
 func expression() {
 	parsePrecedence(PrecedenceAssignment)
 }
 
-func number() {
-	v, err := strconv.ParseFloat(gParser.previous.Lexeme(), 64)
+func varDeclaration() {
+	global := parseVariable("Expect variable name.")
+
+	if match(tokens.TokenEqual) {
+		expression()
+	} else {
+		emitOpcode(bytecode.OpNil)
+	}
+	consume(tokens.TokenSemicolon, "Expect ';' after variable declaration.")
+
+	defineVariable(global)
+}
+
+func printStatement() {
+	expression()
+	consume(tokens.TokenSemicolon, "Expect ';' after value.")
+	emitOpcode(bytecode.OpPrint)
+}
+
+func synchronize() {
+	gParser.panicMode = false
+
+	for gParser.current.Type != tokens.TokenEOF {
+		if gParser.previous.Type == tokens.TokenSemicolon {
+			return
+		}
+
+		switch gParser.current.Type {
+		case tokens.TokenClass:
+		case tokens.TokenFun:
+		case tokens.TokenVar:
+		case tokens.TokenFor:
+		case tokens.TokenIf:
+		case tokens.TokenWhile:
+		case tokens.TokenPrint:
+		case tokens.TokenReturn:
+			return
+		}
+
+		advance()
+	}
+}
+
+func declaration() {
+	if match(tokens.TokenVar) {
+		varDeclaration()
+	} else {
+		statement()
+	}
+
+	if gParser.panicMode {
+		synchronize()
+	}
+}
+
+func statement() {
+	if match(tokens.TokenPrint) {
+		printStatement()
+	} else {
+		expressionStatement()
+	}
+}
+
+func expressionStatement() {
+	expression()
+	consume(tokens.TokenSemicolon, "Expect ';' after expression.")
+	emitOpcode(bytecode.OpPop)
+}
+
+func number(ParsePrecedence) {
+	v, err := strconv.ParseFloat(gParser.previous.LexemeAsString(), 64)
 	if err != nil {
 		errorAtPrev(err.Error())
 	}
 	emitConstant(vmvalue.NumberAsValue(v))
 }
 
-func string_() {
+func string_(ParsePrecedence) {
 	t := gParser.previous
 	chars := t.Source[t.Start+1 : t.Start+t.Length-1]
 	str := hashtable.StringInternCopy(chars)
 	emitConstant(vmvalue.ObjAsValue(str))
 }
 
-func grouping() {
+func namedVariable(token scanner.Token, precedence ParsePrecedence) {
+	arg := identifierConstant(&token)
+	if precedence.CanAssign() && match(tokens.TokenEqual) {
+		expression()
+		emitBytes(bytecode.OpSetGlobal, arg)
+	} else {
+		emitBytes(bytecode.OpGetGlobal, arg)
+	}
+}
+
+func variable(precedence ParsePrecedence) {
+	namedVariable(gParser.previous, precedence)
+}
+
+func grouping(ParsePrecedence) {
 	expression()
 	consume(tokens.TokenRightParen, "Expect ')' after expression.")
 }
 
-func literal() {
+func literal(ParsePrecedence) {
 	switch literalType := gParser.previous.Type; literalType {
 	case tokens.TokenFalse:
 		emitOpcode(bytecode.OpFalse)
@@ -125,7 +228,7 @@ func literal() {
 	}
 }
 
-func binary() {
+func binary(ParsePrecedence) {
 	// the 1st (left) operand has been already parsed and consumed by this point
 
 	// operator type
@@ -161,7 +264,7 @@ func binary() {
 	}
 }
 
-func unary() {
+func unary(ParsePrecedence) {
 	operatorType := gParser.previous.Type
 	parsePrecedence(PrecedenceUnary)
 
@@ -172,7 +275,7 @@ func unary() {
 	case tokens.TokenMinus:
 		emitOpcode(bytecode.OpNegate)
 	default:
-		panic("Unreachable unary: " + gParser.previous.Lexeme())
+		panic("Unreachable unary: " + gParser.previous.LexemeAsString())
 	}
 }
 
@@ -191,6 +294,18 @@ func consume(stype tokens.TokenType, message string) {
 	}
 
 	errorAtCurrent(message)
+}
+
+func match(stype tokens.TokenType) bool {
+	if !check(stype) {
+		return false
+	}
+	advance()
+	return true
+}
+
+func check(stype tokens.TokenType) bool {
+	return gParser.current.Type == stype
 }
 
 func errorAtCurrent(message string) {
@@ -213,7 +328,7 @@ func errorAt(token *scanner.Token, message string) {
 	} else if token.Type == tokens.TokenError {
 		// Nothing.
 	} else {
-		fmt.Fprintf(os.Stderr, " at '%s'", token.Lexeme())
+		fmt.Fprintf(os.Stderr, " at '%s'", token.LexemeAsString())
 	}
 
 	fmt.Fprintf(os.Stderr, ": %s\n", message)
@@ -243,7 +358,7 @@ func init() {
 		tokens.TokenGreaterEqual: {nil, binary, PrecedenceComparison},
 		tokens.TokenLess:         {nil, binary, PrecedenceComparison},
 		tokens.TokenLessEqual:    {nil, binary, PrecedenceComparison},
-		tokens.TokenIdentifier:   {nil, nil, PrecedenceNone},
+		tokens.TokenIdentifier:   {variable, nil, PrecedenceNone},
 		tokens.TokenString:       {string_, nil, PrecedenceNone},
 		tokens.TokenNumber:       {number, nil, PrecedenceNone},
 		tokens.TokenAnd:          {nil, nil, PrecedenceNone},

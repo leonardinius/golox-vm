@@ -25,3 +25,8 @@ func PrintValue(v vmvalue.Value) {
 		panic(fmt.Sprintf("unexpected value type: %#v", v))
 	}
 }
+
+func PrintlnValue(v vmvalue.Value) {
+	PrintValue(v)
+	fmt.Println()
+}

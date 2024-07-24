@@ -25,7 +25,7 @@ func TestScanner(t *testing.T) {
 				if token.Type == tokens.TokenEOF {
 					break
 				}
-				tokenAsText := fmt.Sprintf("%04d [%s] '%s'", token.Line, token.Type, token.Lexeme())
+				tokenAsText := fmt.Sprintf("%04d [%s] '%s'", token.Line, token.Type, token.LexemeAsString())
 				outputs = append(outputs, tokenAsText)
 			}
 			actual := strings.Join(outputs, "\n")
