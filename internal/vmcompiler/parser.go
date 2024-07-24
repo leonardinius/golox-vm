@@ -3,6 +3,7 @@ package vmcompiler
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
@@ -99,17 +100,87 @@ func identifierConstant(token *scanner.Token) byte {
 	return makeConstant(vmvalue.ObjAsValue(hashtable.StringInternCopy(token.Lexeme())))
 }
 
+func resolveLocal(current *Compiler, name *scanner.Token) (slot byte, ok bool) {
+	for i := current.LocalCount - 1; i >= 0; i-- {
+		local := &current.Locals[i]
+		if slices.Equal(name.Lexeme(), local.Name.Lexeme()) {
+			if local.Depth == -1 {
+				errorAtPrev("Can't read local variable in its own initializer.")
+			}
+			return byte(i), true
+		}
+	}
+
+	return 0, false
+}
+
+func addLocal(name scanner.Token) {
+	if gCurrent.LocalCount == len(gCurrent.Locals) {
+		errorAtPrev("Too many local variables in function.")
+		return
+	}
+
+	local := &gCurrent.Locals[gCurrent.LocalCount]
+	gCurrent.LocalCount++
+	local.Name = name
+	local.Depth = -1
+}
+
+func declareVariable() {
+	if gCurrent.ScoreDepth == 0 {
+		return
+	}
+
+	name := &gParser.previous
+	// search for local variable
+	for i := gCurrent.LocalCount - 1; i >= 0; i-- {
+		local := &gCurrent.Locals[i]
+		if local.Depth != -1 && local.Depth < gCurrent.ScoreDepth {
+			break
+		}
+
+		if slices.Equal(name.Lexeme(), local.Name.Lexeme()) {
+			errorAtPrev("Already a variable with this name in this scope.")
+		}
+	}
+
+	addLocal(*name)
+}
+
 func parseVariable(errorMessage string) byte {
 	consume(tokens.TokenIdentifier, errorMessage)
+
+	declareVariable()
+	if gCurrent.ScoreDepth > 0 {
+		return 0
+	}
+
 	return identifierConstant(&gParser.previous)
 }
 
+func markInitialized() {
+	gCurrent.Locals[gCurrent.LocalCount-1].Depth = gCurrent.ScoreDepth
+}
+
 func defineVariable(global byte) {
+	if gCurrent.ScoreDepth > 0 {
+		markInitialized()
+		return
+	}
+
 	emitBytes(bytecode.OpDefineGlobal, global)
 }
 
 func expression() {
 	parsePrecedence(PrecedenceAssignment)
+}
+
+func block() {
+	for !check(tokens.TokenRightBrace) && !check(tokens.TokenEOF) {
+		declaration()
+	}
+
+	consume(tokens.TokenRightBrace, "Expect '}' after block.")
 }
 
 func varDeclaration() {
@@ -170,6 +241,10 @@ func declaration() {
 func statement() {
 	if match(tokens.TokenPrint) {
 		printStatement()
+	} else if match(tokens.TokenLeftBrace) {
+		beginScope()
+		block()
+		endScope()
 	} else {
 		expressionStatement()
 	}
@@ -196,13 +271,24 @@ func string_(ParsePrecedence) {
 	emitConstant(vmvalue.ObjAsValue(str))
 }
 
-func namedVariable(token scanner.Token, precedence ParsePrecedence) {
-	arg := identifierConstant(&token)
-	if precedence.CanAssign() && match(tokens.TokenEqual) {
-		expression()
-		emitBytes(bytecode.OpSetGlobal, arg)
+func namedVariable(name scanner.Token, precedence ParsePrecedence) {
+	canAssign := precedence.CanAssign()
+	var getOp, setOp bytecode.OpCode
+	arg, local := resolveLocal(gCurrent, &name)
+	if local {
+		getOp = bytecode.OpGetLocal
+		setOp = bytecode.OpSetLocal
 	} else {
-		emitBytes(bytecode.OpGetGlobal, arg)
+		arg = identifierConstant(&name)
+		getOp = bytecode.OpGetGlobal
+		setOp = bytecode.OpSetGlobal
+	}
+
+	if canAssign && match(tokens.TokenEqual) {
+		expression()
+		emitBytes(setOp, arg)
+	} else {
+		emitBytes(getOp, arg)
 	}
 }
 
@@ -287,8 +373,8 @@ func mustGetRule(t tokens.TokenType) *ParseRule {
 	}
 }
 
-func consume(stype tokens.TokenType, message string) {
-	if gParser.current.Type == stype {
+func consume(t tokens.TokenType, message string) {
+	if gParser.current.Type == t {
 		advance()
 		return
 	}
@@ -296,16 +382,16 @@ func consume(stype tokens.TokenType, message string) {
 	errorAtCurrent(message)
 }
 
-func match(stype tokens.TokenType) bool {
-	if !check(stype) {
+func match(t tokens.TokenType) bool {
+	if !check(t) {
 		return false
 	}
 	advance()
 	return true
 }
 
-func check(stype tokens.TokenType) bool {
-	return gParser.current.Type == stype
+func check(t tokens.TokenType) bool {
+	return gParser.current.Type == t
 }
 
 func errorAtCurrent(message string) {

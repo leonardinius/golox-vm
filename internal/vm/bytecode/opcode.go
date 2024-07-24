@@ -11,6 +11,8 @@ const (
 	OpTrue
 	OpFalse
 	OpPop
+	OpGetLocal
+	OpSetLocal
 	OpGetGlobal
 	OpDefineGlobal
 	OpSetGlobal
@@ -36,6 +38,8 @@ var gOpCodeStrings = map[OpCode]string{
 	OpGreater:      "OP_GREATER",
 	OpLess:         "OP_LESS",
 	OpPop:          "OP_POP",
+	OpGetLocal:     "OP_GET_LOCAL",
+	OpSetLocal:     "OP_SET_LOCAL",
 	OpGetGlobal:    "OP_GET_GLOBAL",
 	OpDefineGlobal: "OP_DEFINE_GLOBAL",
 	OpSetGlobal:    "OP_SET_GLOBAL",
