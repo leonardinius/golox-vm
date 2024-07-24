@@ -47,14 +47,17 @@ func (p ParsePrecedence) Next() ParsePrecedence {
 	return p + 1
 }
 
+func (p ParsePrecedence) CanAssign() bool {
+	return p <= PrecedenceAssignment
+}
+
 type (
-	ParseFn      func()
-	InfixParseFn func()
+	ParseFn func(precedence ParsePrecedence)
 )
 
 type ParseRule struct {
 	prefixRule ParseFn
-	infixRule  InfixParseFn
+	infixRule  ParseFn
 	precedence ParsePrecedence
 }
 
@@ -79,12 +82,16 @@ func parsePrecedence(precedence ParsePrecedence) {
 		errorAtPrev("Expect expression.")
 		return
 	}
-	prefixRule()
+	prefixRule(precedence)
 
 	for precedence <= mustGetRule(gParser.current.Type).precedence {
 		advance()
 		infixRule := mustGetRule(gParser.previous.Type).infixRule
-		infixRule()
+		infixRule(precedence)
+	}
+
+	if precedence.CanAssign() && match(tokens.TokenEqual) {
+		errorAtPrev("Invalid assignment target.")
 	}
 }
 
@@ -174,7 +181,7 @@ func expressionStatement() {
 	emitOpcode(bytecode.OpPop)
 }
 
-func number() {
+func number(ParsePrecedence) {
 	v, err := strconv.ParseFloat(gParser.previous.LexemeAsString(), 64)
 	if err != nil {
 		errorAtPrev(err.Error())
@@ -182,28 +189,33 @@ func number() {
 	emitConstant(vmvalue.NumberAsValue(v))
 }
 
-func string_() {
+func string_(ParsePrecedence) {
 	t := gParser.previous
 	chars := t.Source[t.Start+1 : t.Start+t.Length-1]
 	str := hashtable.StringInternCopy(chars)
 	emitConstant(vmvalue.ObjAsValue(str))
 }
 
-func namedVariable(token scanner.Token) {
+func namedVariable(token scanner.Token, precedence ParsePrecedence) {
 	arg := identifierConstant(&token)
-	emitBytes(bytecode.OpGetGlobal, arg)
+	if precedence.CanAssign() && match(tokens.TokenEqual) {
+		expression()
+		emitBytes(bytecode.OpSetGlobal, arg)
+	} else {
+		emitBytes(bytecode.OpGetGlobal, arg)
+	}
 }
 
-func variable() {
-	namedVariable(gParser.previous)
+func variable(precedence ParsePrecedence) {
+	namedVariable(gParser.previous, precedence)
 }
 
-func grouping() {
+func grouping(ParsePrecedence) {
 	expression()
 	consume(tokens.TokenRightParen, "Expect ')' after expression.")
 }
 
-func literal() {
+func literal(ParsePrecedence) {
 	switch literalType := gParser.previous.Type; literalType {
 	case tokens.TokenFalse:
 		emitOpcode(bytecode.OpFalse)
@@ -216,7 +228,7 @@ func literal() {
 	}
 }
 
-func binary() {
+func binary(ParsePrecedence) {
 	// the 1st (left) operand has been already parsed and consumed by this point
 
 	// operator type
@@ -252,7 +264,7 @@ func binary() {
 	}
 }
 
-func unary() {
+func unary(ParsePrecedence) {
 	operatorType := gParser.previous.Type
 	parsePrecedence(PrecedenceUnary)
 

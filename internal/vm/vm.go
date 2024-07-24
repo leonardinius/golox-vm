@@ -125,12 +125,16 @@ func Peek(distance int) vmvalue.Value {
 	return GlobalVM.Stack[GlobalVM.StackTop-1-distance]
 }
 
-func SetGlobal(name *vmobject.ObjString, value vmvalue.Value) {
-	hashtable.SetGlobal(name, value)
+func SetGlobal(name *vmobject.ObjString, value vmvalue.Value) bool {
+	return hashtable.SetGlobal(name, value)
 }
 
 func GetGlobal(name *vmobject.ObjString) (vmvalue.Value, bool) {
 	return hashtable.GetGlobal(name)
+}
+
+func DeleteGlobal(name *vmobject.ObjString) bool {
+	return hashtable.DeleteGlobal(name)
 }
 
 func GCObjects() *vmobject.Obj {
@@ -165,6 +169,12 @@ func Run() (vmvalue.Value, error) {
 			Push(vmvalue.TrueValue)
 		case bytecode.OpFalse:
 			Push(vmvalue.FalseValue)
+		case bytecode.OpSetGlobal:
+			name := readString()
+			if isNewKey := SetGlobal(name, Peek(0)); isNewKey {
+				DeleteGlobal(name)
+				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
+			}
 		case bytecode.OpEqual:
 			Push(vmvalue.BoolAsValue(vmvalue.IsValuesEqual(Pop(), Pop())))
 		case bytecode.OpGreater:
