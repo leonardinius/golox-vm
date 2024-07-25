@@ -10,15 +10,27 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
 )
 
-var (
-	gScanner        scanner.Scanner
-	gParser         Parser
-	gCompilingChunk *vmchunk.Chunk
-)
+type Compiler struct {
+	Locals     [math.MaxInt8]Local
+	LocalCount int
+	ScoreDepth int
+}
+
+type Local struct {
+	Name  scanner.Token
+	Depth int
+}
+
+func NewCompiler() Compiler {
+	c := Compiler{}
+	gCurrent = &c
+	return c
+}
 
 func Compile(source []byte, chunk *vmchunk.Chunk) bool {
 	gScanner = scanner.NewScanner(source)
 	defer gScanner.Free()
+	_ = NewCompiler()
 	gCompilingChunk = chunk
 	defer endCompiler()
 
@@ -71,4 +83,18 @@ func emitReturn() {
 
 func endCompiler() {
 	emitReturn()
+}
+
+func beginScope() {
+	gCurrent.ScoreDepth++
+}
+
+func endScope() {
+	gCurrent.ScoreDepth--
+
+	for gCurrent.LocalCount > 0 &&
+		gCurrent.Locals[gCurrent.LocalCount-1].Depth > gCurrent.ScoreDepth {
+		emitOpcode(bytecode.OpPop)
+		gCurrent.LocalCount--
+	}
 }

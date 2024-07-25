@@ -141,7 +141,7 @@ func GCObjects() *vmobject.Obj {
 	return vmobject.GRoots
 }
 
-func Run() (vmvalue.Value, error) {
+func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity in Run switch
 	if vmdebug.DebugDisassembler {
 		fmt.Println()
 		fmt.Println("== trace execution ==")
@@ -169,12 +169,6 @@ func Run() (vmvalue.Value, error) {
 			Push(vmvalue.TrueValue)
 		case bytecode.OpFalse:
 			Push(vmvalue.FalseValue)
-		case bytecode.OpSetGlobal:
-			name := readString()
-			if isNewKey := SetGlobal(name, Peek(0)); isNewKey {
-				DeleteGlobal(name)
-				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
-			}
 		case bytecode.OpEqual:
 			Push(vmvalue.BoolAsValue(vmvalue.IsValuesEqual(Pop(), Pop())))
 		case bytecode.OpGreater:
@@ -203,12 +197,24 @@ func Run() (vmvalue.Value, error) {
 			Pop()
 		case bytecode.OpPrint:
 			PrintlnValue(Pop())
+		case bytecode.OpGetLocal:
+			slot := readByte()
+			Push(GlobalVM.Stack[slot])
+		case bytecode.OpSetLocal:
+			slot := readByte()
+			GlobalVM.Stack[slot] = Peek(0)
 		case bytecode.OpGetGlobal:
 			name := readString()
 			if value, gok := GetGlobal(name); !gok {
 				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
 			} else {
 				Push(value)
+			}
+		case bytecode.OpSetGlobal:
+			name := readString()
+			if isNewKey := SetGlobal(name, Peek(0)); isNewKey {
+				DeleteGlobal(name)
+				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
 			}
 		case bytecode.OpDefineGlobal:
 			name := readString()
