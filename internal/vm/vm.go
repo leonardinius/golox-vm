@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
@@ -14,13 +15,13 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 )
 
-const StackMax = 256
+const MaxStackCount = math.MaxUint8 + 1
 
 // VM is the virtual machine.
 type VM struct {
 	Chunk    *vmchunk.Chunk
 	IP       int
-	Stack    [StackMax]vmvalue.Value
+	Stack    [MaxStackCount]vmvalue.Value
 	StackTop int
 }
 

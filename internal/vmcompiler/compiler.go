@@ -10,8 +10,13 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
 )
 
+const (
+	MaxConstantCount = math.MaxUint8
+	MaxLocalCount    = math.MaxUint8 + 1
+)
+
 type Compiler struct {
-	Locals     [math.MaxInt8]Local
+	Locals     [MaxLocalCount]Local
 	LocalCount int
 	ScoreDepth int
 }
@@ -69,7 +74,7 @@ func emitConstant(v vmvalue.Value) {
 
 func makeConstant(v vmvalue.Value) byte {
 	constant := currentChunk().AddConstant(v)
-	if constant > math.MaxUint8 {
+	if constant > MaxConstantCount {
 		errorAtPrev("Too many constants in one chunk.")
 		return 0
 	}
