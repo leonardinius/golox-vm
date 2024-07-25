@@ -59,7 +59,7 @@ func InitVM() {
 
 func FreeVM() {
 	hashtable.FreeGlobals()
-	hashtable.InitInternStrings()
+	hashtable.FreeInternStrings()
 	vmobject.FreeObjects()
 	resetStack()
 	resetRootObjects()
