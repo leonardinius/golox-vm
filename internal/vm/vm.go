@@ -193,7 +193,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 		case bytecode.OpNegate:
 			ok = opNegate()
 		case bytecode.OpNot:
-			Push(vmvalue.BoolAsValue(!isFalsey(Pop())))
+			Push(vmvalue.BoolAsValue(!isTruey(Pop())))
 		case bytecode.OpPop:
 			Pop()
 		case bytecode.OpPrint:
@@ -221,6 +221,17 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 			name := readString()
 			SetGlobal(name, Peek(0))
 			Pop()
+		case bytecode.OpJump:
+			offset := readShort()
+			GlobalVM.IP += int(offset)
+		case bytecode.OpJumpIfFalse:
+			offset := readShort()
+			if isFalsey(Peek(0)) {
+				GlobalVM.IP += int(offset)
+			}
+		case bytecode.OpLoop:
+			offset := readShort()
+			GlobalVM.IP -= int(offset)
 		case bytecode.OpReturn:
 			return Pop(), nil
 		default:
@@ -229,11 +240,15 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 	}
 }
 
-func isFalsey(value vmvalue.Value) bool {
+func isTruey(value vmvalue.Value) bool {
 	if vmvalue.IsBool(value) {
 		return vmvalue.ValueAsBool(value)
 	}
 	return !vmvalue.IsNil(value)
+}
+
+func isFalsey(value vmvalue.Value) bool {
+	return !isTruey(value)
 }
 
 func binaryNumOp(op func(vmvalue.Value, vmvalue.Value) vmvalue.Value) (ok bool) {
@@ -311,6 +326,11 @@ func binOpLess(a, b float64) bool {
 func readByte() byte {
 	GlobalVM.IP++
 	return GlobalVM.Chunk.Code[GlobalVM.IP-1]
+}
+
+func readShort() uint16 {
+	GlobalVM.IP += 2
+	return uint16(GlobalVM.Chunk.Code[GlobalVM.IP-2]<<8 | GlobalVM.Chunk.Code[GlobalVM.IP-1])
 }
 
 func readConstant() vmvalue.Value {

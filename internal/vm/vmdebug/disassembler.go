@@ -49,6 +49,11 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 	case bytecode.OpGetLocal,
 		bytecode.OpSetLocal:
 		return s.byteInstruction(instruction, chunk, offset)
+	case bytecode.OpJump,
+		bytecode.OpJumpIfFalse:
+		return s.jumpInstruction(instruction, 1, chunk, offset)
+	case bytecode.OpLoop:
+		return s.jumpInstruction(instruction, -1, chunk, offset)
 	case bytecode.OpNil,
 		bytecode.OpTrue,
 		bytecode.OpFalse,
@@ -83,6 +88,12 @@ func (s *stdoutDisassembler) byteInstruction(op bytecode.OpCode, chunk *vmchunk.
 	slot := chunk.Code[offset+1]
 	fmt.Printf("%-16s %4d\n", op, slot)
 	return offset + 2
+}
+
+func (s *stdoutDisassembler) jumpInstruction(op bytecode.OpCode, sign int, chunk *vmchunk.Chunk, offset int) int {
+	jump := int((uint16(chunk.Code[offset+1]) << 8) | uint16(chunk.Code[offset+2]))
+	fmt.Printf("%-16s %4d -> %d\n", op, offset, offset+3+sign*jump)
+	return offset + 3
 }
 
 func (s *stdoutDisassembler) simpleInstruction(op bytecode.OpCode, offset int) int {
