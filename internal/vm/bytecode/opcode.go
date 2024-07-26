@@ -26,6 +26,8 @@ const (
 	OpNot
 	OpNegate
 	OpPrint
+	OpJump
+	OpJumpIfFalse
 	OpReturn
 )
 
@@ -50,6 +52,8 @@ var gOpCodeStrings = map[OpCode]string{
 	OpNot:          "OP_NOT",
 	OpNegate:       "OP_NEGATE",
 	OpPrint:        "OP_PRINT",
+	OpJump:         "OP_JUMP",
+	OpJumpIfFalse:  "OP_JUMP_IF_FALSE",
 	OpReturn:       "OP_RETURN",
 }
 

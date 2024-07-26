@@ -68,8 +68,30 @@ func emitBytes(op bytecode.OpCode, b byte) {
 	currentChunk().Write(b, gParser.previous.Line)
 }
 
+func emitJump(op bytecode.OpCode) int {
+	emitOpcode(op)
+	currentChunk().Write(0xff, gParser.previous.Line)
+	currentChunk().Write(0xff, gParser.previous.Line)
+	return currentChunk().Count - 2
+}
+
 func emitConstant(v vmvalue.Value) {
 	emitBytes(bytecode.OpConstant, makeConstant(v))
+}
+
+func patchJump(offset int) {
+	// -2 to adjust for the bytecode for the jump offset itself.
+	jump := currentChunk().Count - offset - 2
+
+	if jump > math.MaxUint16 {
+		errorAtPrev("Too much code to jump over.")
+	}
+
+	b1 := byte((jump >> 8) & 0xff)
+	b2 := byte((jump) & 0xff)
+
+	currentChunk().Code[offset] = b1
+	currentChunk().Code[offset+1] = b2
 }
 
 func makeConstant(v vmvalue.Value) byte {

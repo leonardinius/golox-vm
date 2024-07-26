@@ -241,10 +241,14 @@ func declaration() {
 func statement() {
 	if match(tokens.TokenPrint) {
 		printStatement()
+	} else if match(tokens.TokenIf) {
+		ifStatement()
 	} else if match(tokens.TokenLeftBrace) {
-		beginScope()
-		block()
-		endScope()
+		func() {
+			beginScope()
+			defer endScope()
+			block()
+		}()
 	} else {
 		expressionStatement()
 	}
@@ -254,6 +258,37 @@ func expressionStatement() {
 	expression()
 	consume(tokens.TokenSemicolon, "Expect ';' after expression.")
 	emitOpcode(bytecode.OpPop)
+}
+
+func ifStatement() {
+	consume(tokens.TokenLeftParen, "Expect '(' after 'if'.")
+	expression()
+	consume(tokens.TokenRightParen, "Expect ')' after condition.")
+
+	// start of if execution
+	// (1.) eval the condition
+	// if condition is false, jump to else (3.)
+	// pop condition and continue otherwise
+	thenJump := emitJump(bytecode.OpJumpIfFalse)
+	emitOpcode(bytecode.OpPop)
+	statement()
+	// (2.) iftrue statement execution ended
+	// jump to the end of else (5.)
+	elseJump := emitJump(bytecode.OpJump)
+
+	// (3.) end of iftrue, (1.) will jump here if condition is false
+	// pop condition and continue.
+	patchJump(thenJump)
+	emitOpcode(bytecode.OpPop)
+
+	// (4.) else statement execution
+	// if there is no else, jump to the end of if
+	// otherwise, continue
+	if match(tokens.TokenElse) {
+		statement()
+	}
+	// (5.) end of else (end of if).
+	patchJump(elseJump)
 }
 
 func number(ParsePrecedence) {
