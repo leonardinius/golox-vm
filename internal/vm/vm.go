@@ -229,6 +229,9 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 			if isFalsey(Peek(0)) {
 				GlobalVM.IP += int(offset)
 			}
+		case bytecode.OpLoop:
+			offset := readShort()
+			GlobalVM.IP -= int(offset)
 		case bytecode.OpReturn:
 			return Pop(), nil
 		default:

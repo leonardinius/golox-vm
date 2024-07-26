@@ -171,6 +171,26 @@ func defineVariable(global byte) {
 	emitBytes(bytecode.OpDefineGlobal, global)
 }
 
+func and_(ParsePrecedence) {
+	endJump := emitJump(bytecode.OpJumpIfFalse)
+
+	emitOpcode(bytecode.OpPop)
+	parsePrecedence(PrecedenceAnd)
+
+	patchJump(endJump)
+}
+
+func or_(ParsePrecedence) {
+	elseJump := emitJump(bytecode.OpJumpIfFalse)
+	endJump := emitJump(bytecode.OpJump)
+
+	patchJump(elseJump)
+	emitOpcode(bytecode.OpPop)
+
+	parsePrecedence(PrecedenceOr)
+	patchJump(endJump)
+}
+
 func expression() {
 	parsePrecedence(PrecedenceAssignment)
 }
@@ -241,8 +261,12 @@ func declaration() {
 func statement() {
 	if match(tokens.TokenPrint) {
 		printStatement()
+	} else if match(tokens.TokenFor) {
+		forStatement()
 	} else if match(tokens.TokenIf) {
 		ifStatement()
+	} else if match(tokens.TokenWhile) {
+		whileStatement()
 	} else if match(tokens.TokenLeftBrace) {
 		func() {
 			beginScope()
@@ -289,6 +313,67 @@ func ifStatement() {
 	}
 	// (5.) end of else (end of if).
 	patchJump(elseJump)
+}
+
+func whileStatement() {
+	loopStart := currentChunk().Count
+	consume(tokens.TokenLeftParen, "Expect '(' after 'while'.")
+	expression()
+	consume(tokens.TokenRightParen, "Expect ')' after condition.")
+
+	exitJump := emitJump(bytecode.OpJumpIfFalse)
+	emitOpcode(bytecode.OpPop)
+	statement()
+	emitLoop(loopStart)
+
+	patchJump(exitJump)
+	emitOpcode(bytecode.OpPop)
+}
+
+func forStatement() {
+	beginScope()
+	defer endScope()
+
+	consume(tokens.TokenLeftParen, "Expect '(' after 'for'.")
+
+	if match(tokens.TokenSemicolon) {
+		// No initializer.
+	} else if match(tokens.TokenVar) {
+		varDeclaration()
+	} else {
+		expressionStatement()
+	}
+
+	loopStart := currentChunk().Count
+	exitJump := -1
+
+	if !match(tokens.TokenSemicolon) {
+		expression()
+		consume(tokens.TokenSemicolon, "Expect ';' after loop condition.")
+
+		exitJump = emitJump(bytecode.OpJumpIfFalse)
+		emitOpcode(bytecode.OpPop) // Condition.
+	}
+
+	if !match(tokens.TokenRightParen) {
+		bodyJump := emitJump(bytecode.OpJump)
+		incrementStart := currentChunk().Count
+		expression()
+		emitOpcode(bytecode.OpPop) // discard expression result
+		consume(tokens.TokenRightParen, "Expect ')' after for clauses.")
+
+		emitLoop(loopStart)
+		loopStart = incrementStart
+		patchJump(bodyJump)
+	}
+
+	statement()
+	emitLoop(loopStart)
+
+	if exitJump != -1 {
+		patchJump(exitJump)
+		emitOpcode(bytecode.OpPop) // Condition.
+	}
 }
 
 func number(ParsePrecedence) {
@@ -482,7 +567,7 @@ func init() {
 		tokens.TokenIdentifier:   {variable, nil, PrecedenceNone},
 		tokens.TokenString:       {string_, nil, PrecedenceNone},
 		tokens.TokenNumber:       {number, nil, PrecedenceNone},
-		tokens.TokenAnd:          {nil, nil, PrecedenceNone},
+		tokens.TokenAnd:          {nil, and_, PrecedenceAnd},
 		tokens.TokenClass:        {nil, nil, PrecedenceNone},
 		tokens.TokenElse:         {nil, nil, PrecedenceNone},
 		tokens.TokenFalse:        {literal, nil, PrecedenceNone},
@@ -490,7 +575,7 @@ func init() {
 		tokens.TokenFun:          {nil, nil, PrecedenceNone},
 		tokens.TokenIf:           {nil, nil, PrecedenceNone},
 		tokens.TokenNil:          {literal, nil, PrecedenceNone},
-		tokens.TokenOr:           {nil, nil, PrecedenceNone},
+		tokens.TokenOr:           {nil, or_, PrecedenceOr},
 		tokens.TokenPrint:        {nil, nil, PrecedenceNone},
 		tokens.TokenReturn:       {nil, nil, PrecedenceNone},
 		tokens.TokenSuper:        {nil, nil, PrecedenceNone},

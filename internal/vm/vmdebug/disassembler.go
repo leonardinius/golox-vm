@@ -52,6 +52,8 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 	case bytecode.OpJump,
 		bytecode.OpJumpIfFalse:
 		return s.jumpInstruction(instruction, 1, chunk, offset)
+	case bytecode.OpLoop:
+		return s.jumpInstruction(instruction, -1, chunk, offset)
 	case bytecode.OpNil,
 		bytecode.OpTrue,
 		bytecode.OpFalse,
