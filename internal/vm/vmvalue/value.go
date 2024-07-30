@@ -107,6 +107,14 @@ func isObjType(v Value, objType vmobject.ObjType) bool {
 	return IsObj(v) && ObjTypeTag(v) == objType
 }
 
+func IsString(v Value) bool {
+	return isObjType(v, vmobject.ObjTypeString)
+}
+
+func IsFunction(v Value) bool {
+	return isObjType(v, vmobject.ObjTypeFunction)
+}
+
 func ValueAsString(v Value) *vmobject.ObjString {
 	return ValueAsObjType[vmobject.ObjString](v)
 }
@@ -115,6 +123,6 @@ func ValueAsStringChars(v Value) []byte {
 	return ValueAsObjType[vmobject.ObjString](v).Chars
 }
 
-func IsString(v Value) bool {
-	return isObjType(v, vmobject.ObjTypeString)
+func ValueAsFunction(v Value) *vmobject.ObjFunction {
+	return ValueAsObjType[vmobject.ObjFunction](v)
 }

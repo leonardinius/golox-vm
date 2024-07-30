@@ -1,6 +1,8 @@
 package vmchunk
 
 import (
+	"unsafe"
+
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
@@ -33,6 +35,10 @@ func (chunk *Chunk) Free() {
 	chunk.resetChunk()
 }
 
+func (chunk *Chunk) AsPtr() uintptr {
+	return uintptr(unsafe.Pointer(chunk)) //nolint:gosec // this is a pointer
+}
+
 func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {
 	chunk.Write(byte(op), line)
 }
@@ -54,4 +60,8 @@ func (chunk *Chunk) DebugGetLine(offset int) int {
 
 func (chunk *Chunk) AddConstant(v vmvalue.Value) int {
 	return chunk.Constants.Write(v)
+}
+
+func (chunk *Chunk) ConstantAt(at int) vmvalue.Value {
+	return chunk.Constants.At(at)
 }

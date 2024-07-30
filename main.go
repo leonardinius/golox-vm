@@ -49,7 +49,7 @@ func repl(welcome string) error {
 			return err
 		}
 
-		if value, err := vm.Interpret(welcome, line); err == nil {
+		if value, err := vm.Interpret(line); err == nil {
 			vm.PrintlnValue(value)
 		}
 		// else {
@@ -63,7 +63,7 @@ func repl(welcome string) error {
 func runFile(script string) error {
 	data, err := os.ReadFile(script) //nolint:gosec // get the data
 	if err == nil {
-		_, err = vm.Interpret(filepath.Base(script), data)
+		_, err = vm.Interpret(data)
 	}
 	return err
 }

@@ -84,18 +84,25 @@ func resetVMChunk() {
 	GlobalVM.IP = 0
 }
 
-func Interpret(script string, code []byte) (vmvalue.Value, error) {
+func Interpret(code []byte) (vmvalue.Value, error) {
 	chunk := vmchunk.NewChunk()
 	defer chunk.Free()
 
-	if !vmcompiler.Compile(code, &chunk) {
+	var fn *vmobject.ObjFunction
+	var ok bool
+
+	if fn, ok = vmcompiler.Compile(code, &chunk); !ok {
 		return vmvalue.NilValue, InterpretCompileError
 	}
 
 	initVMChunk(&chunk)
 	defer resetVMChunk()
 
-	vmdebug.DisassembleChunk(GlobalVM.Chunk, script)
+	fnName := "<script>"
+	if fn.Name != nil {
+		fnName = string(fn.Name.Chars)
+	}
+	vmdebug.DisassembleChunk(GlobalVM.Chunk, fnName)
 	return Run()
 }
 
@@ -289,11 +296,12 @@ func opNegate() (ok bool) {
 }
 
 func stringConcat() (ok bool) {
-	b := vmvalue.ValueAsString(Pop())
-	a := vmvalue.ValueAsString(Pop())
-	chars := vmmem.AllocateSlice[byte](len(a.Chars) + len(b.Chars))
-	copy(chars, a.Chars)
-	copy(chars[len(a.Chars):], b.Chars)
+	b := vmvalue.ValueAsStringChars(Pop())
+	a := vmvalue.ValueAsStringChars(Pop())
+	length := len(a) + len(b)
+	chars := vmmem.AllocateSlice[byte](length)
+	copy(chars, a)
+	copy(chars[len(a):], b)
 	str := hashtable.StringInternTake(chars)
 	Push(vmvalue.ObjAsValue(str))
 	return true
@@ -330,11 +338,11 @@ func readByte() byte {
 
 func readShort() uint16 {
 	GlobalVM.IP += 2
-	return uint16(GlobalVM.Chunk.Code[GlobalVM.IP-2]<<8 | GlobalVM.Chunk.Code[GlobalVM.IP-1])
+	return (uint16(GlobalVM.Chunk.Code[GlobalVM.IP-2]) << 8) | uint16(GlobalVM.Chunk.Code[GlobalVM.IP-1])
 }
 
 func readConstant() vmvalue.Value {
-	return GlobalVM.Chunk.Constants.At(int(readByte()))
+	return GlobalVM.Chunk.ConstantAt(int(readByte()))
 }
 
 func readString() *vmobject.ObjString {

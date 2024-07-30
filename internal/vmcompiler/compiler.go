@@ -2,9 +2,11 @@ package vmcompiler
 
 import (
 	"math"
+	"unsafe"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
@@ -16,7 +18,18 @@ const (
 	MaxJump          = math.MaxUint16
 )
 
+type FunctionType int
+
+const (
+	_ FunctionType = iota
+	FunctionTypeFunction
+	FunctionTypeScript
+)
+
 type Compiler struct {
+	Function *vmobject.ObjFunction
+	FnType   FunctionType
+
 	Locals     [MaxLocalCount]Local
 	LocalCount int
 	ScoreDepth int
@@ -27,18 +40,29 @@ type Local struct {
 	Depth int
 }
 
-func NewCompiler() Compiler {
+func (l *Local) SetName(name string) {
+	l.Name.Source = []byte(name)
+	l.Name.Start = 0
+	l.Name.Length = len(l.Name.Source)
+}
+
+func NewCompiler(chunk *vmchunk.Chunk, fnType FunctionType) Compiler {
 	c := Compiler{}
+	c.FnType = fnType
+	c.Function = vmobject.NewFunction(chunk.AsPtr())
 	gCurrent = &c
+
+	local := &gCurrent.Locals[gCurrent.LocalCount]
+	gCurrent.LocalCount++
+	local.Depth = 0
+	local.SetName("")
 	return c
 }
 
-func Compile(source []byte, chunk *vmchunk.Chunk) bool {
+func Compile(source []byte, chunk *vmchunk.Chunk) (*vmobject.ObjFunction, bool) {
 	gScanner = scanner.NewScanner(source)
 	defer gScanner.Free()
-	_ = NewCompiler()
-	gCompilingChunk = chunk
-	defer endCompiler()
+	_ = NewCompiler(chunk, FunctionTypeScript)
 
 	gParser = NewParser()
 
@@ -48,11 +72,14 @@ func Compile(source []byte, chunk *vmchunk.Chunk) bool {
 		declaration()
 	}
 
-	return !gParser.hadError
+	fn := endCompiler()
+	return fn, !gParser.hadError
 }
 
 func currentChunk() *vmchunk.Chunk {
-	return gCompilingChunk
+	ptr := gCurrent.Function.ChunkPtr
+	ch := (**vmchunk.Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
+	return *ch
 }
 
 func emitOpcode(op bytecode.OpCode) {
@@ -123,8 +150,9 @@ func emitReturn() {
 	emitOpcode(bytecode.OpReturn)
 }
 
-func endCompiler() {
+func endCompiler() *vmobject.ObjFunction {
 	emitReturn()
+	return gCurrent.Function
 }
 
 func beginScope() {

@@ -12,23 +12,25 @@ type ObjType byte
 
 const (
 	_ ObjType = iota
-	// ObjTypeBoundMethod
-	// ObjTypeClass
-	// ObjTypeClosure
-	// ObjTypeFunction
-	// ObjTypeInstance
-	// ObjTypeNative.
+	ObjTypeFunction
 	ObjTypeString
-	// ObjTypeUpvalue.
 )
 
 type VMObjectable interface {
-	Obj | ObjString
+	Obj | ObjString | ObjFunction
 }
 
 type Obj struct {
 	Type ObjType
 	Next *Obj
+}
+
+type ObjFunction struct {
+	Obj
+	Arity       int
+	ChunkPtr    uintptr
+	FreeChunkFn func()
+	Name        *ObjString
 }
 
 type ObjString struct {
@@ -38,17 +40,19 @@ type ObjString struct {
 }
 
 var (
-	GObjSize       = int(unsafe.Sizeof(Obj{}))
-	GObjStringSize = int(unsafe.Sizeof(ObjString{}))
-	GRoots         = (*Obj)(nil)
-	gSeed          = maphash.MakeSeed()
+	GRoots = (*Obj)(nil)
+	gSeed  = maphash.MakeSeed()
+
+	GObjSize         = int(unsafe.Sizeof(Obj{}))
+	GObjStringSize   = int(unsafe.Sizeof(ObjString{}))
+	GObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
 )
 
 func castObject[T VMObjectable](o *Obj) *T {
 	return (*T)(unsafe.Pointer(o)) //nolint:gosec // unsafe.Pointer is used here
 }
 
-func AllocateObject[T VMObjectable](objType ObjType, sizeBytes int) *T {
+func allocateObject[T VMObjectable](objType ObjType, sizeBytes int) *T {
 	ptr := vmmem.AllocateUnsafePtr[byte](sizeBytes)
 	object := ((*Obj)(ptr))
 	object.Type = objType
@@ -72,13 +76,19 @@ func FreeObject(obj *Obj) {
 		s := castObject[ObjString](obj)
 		vmmem.FreeArray(s.Chars)
 		vmmem.FreeUnsafePtr[byte](s, GObjStringSize)
+	case ObjTypeFunction:
+		f := castObject[ObjFunction](obj)
+		if f.FreeChunkFn != nil {
+			f.FreeChunkFn()
+		}
+		vmmem.FreeUnsafePtr[byte](f, GObjFunctionSize)
 	default:
 		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
 	}
 }
 
 func NewTakeString(chars []byte, hash uint64) *ObjString {
-	value := AllocateObject[ObjString](ObjTypeString, GObjStringSize)
+	value := allocateObject[ObjString](ObjTypeString, GObjStringSize)
 	value.Chars = chars
 	value.Hash = hash
 	return value
@@ -90,14 +100,36 @@ func NewCopyString(chars []byte, hash uint64) *ObjString {
 	return NewTakeString(cloned, hash)
 }
 
+func NewFunction(chunkPtr uintptr) *ObjFunction {
+	value := allocateObject[ObjFunction](ObjTypeFunction, GObjFunctionSize)
+	value.Arity = 0
+	value.Name = nil
+	value.ChunkPtr = chunkPtr
+	value.FreeChunkFn = nil
+	return value
+}
+
 func PrintObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
 		value := string(castObject[ObjString](obj).Chars)
 		fmt.Print(value)
+	case ObjTypeFunction:
+		f := castObject[ObjFunction](obj)
+		printFunction(f)
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}
+}
+
+func printFunction(f *ObjFunction) {
+	if f.Name == nil {
+		fmt.Print("<script>")
+		return
+	}
+
+	name := string(f.Name.Chars)
+	fmt.Print("<fn " + name + ">")
 }
 
 func HashString(chars []byte) uint64 {
