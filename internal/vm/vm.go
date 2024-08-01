@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"unsafe"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
@@ -15,14 +16,23 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 )
 
-const MaxStackCount = math.MaxUint8 + 1
+const (
+	MaxCallFrames = 64
+	MaxStackCount = MaxCallFrames * (math.MaxUint8 + 1)
+)
+
+type CallFrame struct {
+	Function *vmobject.ObjFunction
+	IP       int
+	Slots    []vmvalue.Value
+}
 
 // VM is the virtual machine.
 type VM struct {
-	Chunk    *vmchunk.Chunk
-	IP       int
-	Stack    [MaxStackCount]vmvalue.Value
-	StackTop int
+	Frames     [MaxCallFrames]CallFrame
+	FrameCount int
+	Stack      [MaxStackCount]vmvalue.Value
+	StackTop   int
 }
 
 var GlobalVM VM
@@ -52,36 +62,20 @@ func (i InterpretError) Error() string {
 func InitVM() {
 	hashtable.InitInternStrings()
 	hashtable.InitGlobals()
-	resetStack()
-	resetRootObjects()
-	resetVMChunk()
+	resetVM()
 }
 
 func FreeVM() {
 	hashtable.FreeGlobals()
 	hashtable.FreeInternStrings()
 	vmobject.FreeObjects()
-	resetStack()
-	resetRootObjects()
-	resetVMChunk()
+	resetVM()
 }
 
-func resetStack() {
+func resetVM() {
 	GlobalVM.StackTop = 0
-}
-
-func resetRootObjects() {
 	vmobject.GRoots = nil
-}
-
-func initVMChunk(chunk *vmchunk.Chunk) {
-	GlobalVM.Chunk = chunk
-	GlobalVM.IP = 0
-}
-
-func resetVMChunk() {
-	GlobalVM.Chunk = nil
-	GlobalVM.IP = 0
+	GlobalVM.FrameCount = 0
 }
 
 func Interpret(code []byte) (vmvalue.Value, error) {
@@ -95,14 +89,19 @@ func Interpret(code []byte) (vmvalue.Value, error) {
 		return vmvalue.NilValue, InterpretCompileError
 	}
 
-	initVMChunk(&chunk)
-	defer resetVMChunk()
-
 	fnName := "<script>"
 	if fn.Name != nil {
 		fnName = string(fn.Name.Chars)
 	}
-	vmdebug.DisassembleChunk(GlobalVM.Chunk, fnName)
+
+	Push(vmvalue.ObjAsValue(fn))
+	nextFrame := &GlobalVM.Frames[GlobalVM.FrameCount]
+	nextFrame.Function = fn
+	nextFrame.IP = 0
+	nextFrame.Slots = GlobalVM.Stack[:]
+	GlobalVM.FrameCount++
+
+	vmdebug.DisassembleChunk(&chunk, fnName)
 	return Run()
 }
 
@@ -116,7 +115,8 @@ func debug0() {
 		}
 		fmt.Println()
 	}
-	vmdebug.DisassembleInstruction(GlobalVM.Chunk, GlobalVM.IP)
+	frame, chunk := frameChunk()
+	vmdebug.DisassembleInstruction(chunk, frame.IP)
 }
 
 func Push(value vmvalue.Value) {
@@ -206,11 +206,13 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 		case bytecode.OpPrint:
 			PrintlnValue(Pop())
 		case bytecode.OpGetLocal:
+			frame := currentFrame()
 			slot := readByte()
-			Push(GlobalVM.Stack[slot])
+			Push(frame.Slots[slot])
 		case bytecode.OpSetLocal:
+			frame := currentFrame()
 			slot := readByte()
-			GlobalVM.Stack[slot] = Peek(0)
+			frame.Slots[slot] = Peek(0)
 		case bytecode.OpGetGlobal:
 			name := readString()
 			if value, gok := GetGlobal(name); !gok {
@@ -229,16 +231,19 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 			SetGlobal(name, Peek(0))
 			Pop()
 		case bytecode.OpJump:
+			frame := currentFrame()
 			offset := readShort()
-			GlobalVM.IP += int(offset)
+			frame.IP += int(offset)
 		case bytecode.OpJumpIfFalse:
+			frame := currentFrame()
 			offset := readShort()
 			if isFalsey(Peek(0)) {
-				GlobalVM.IP += int(offset)
+				frame.IP += int(offset)
 			}
 		case bytecode.OpLoop:
+			frame := currentFrame()
 			offset := readShort()
-			GlobalVM.IP -= int(offset)
+			frame.IP -= int(offset)
 		case bytecode.OpReturn:
 			return Pop(), nil
 		default:
@@ -331,18 +336,34 @@ func binOpLess(a, b float64) bool {
 	return a < b
 }
 
+func currentFrame() *CallFrame {
+	return &GlobalVM.Frames[GlobalVM.FrameCount-1]
+}
+
+func frameChunk() (*CallFrame, *vmchunk.Chunk) {
+	frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
+	ptr := frame.Function.ChunkPtr
+	ch := (**vmchunk.Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
+	return frame, *ch
+}
+
 func readByte() byte {
-	GlobalVM.IP++
-	return GlobalVM.Chunk.Code[GlobalVM.IP-1]
+	frame, chunk := frameChunk()
+	frame.IP++
+	return chunk.Code[frame.IP-1]
 }
 
 func readShort() uint16 {
-	GlobalVM.IP += 2
-	return (uint16(GlobalVM.Chunk.Code[GlobalVM.IP-2]) << 8) | uint16(GlobalVM.Chunk.Code[GlobalVM.IP-1])
+	frame, chunk := frameChunk()
+	frame.IP += 2
+	return (uint16(chunk.Code[frame.IP-2]) << 8) | uint16(chunk.Code[frame.IP-1])
 }
 
 func readConstant() vmvalue.Value {
-	return GlobalVM.Chunk.ConstantAt(int(readByte()))
+	frame, chunk := frameChunk()
+	frame.IP++
+	at := chunk.Code[frame.IP-1]
+	return chunk.ConstantAt(int(at))
 }
 
 func readString() *vmobject.ObjString {
@@ -353,10 +374,11 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 	fmt.Fprintf(os.Stderr, format, messageAndArgs...)
 	fmt.Fprintln(os.Stderr)
 
-	offset := GlobalVM.IP - 1
-	line := GlobalVM.Chunk.Lines.GetLineByOffset(offset)
+	frame, chunk := frameChunk()
+	offset := frame.IP - 1
+	line := chunk.Lines.GetLineByOffset(offset)
 	fmt.Fprintf(os.Stderr, "[line %d] in script\n", line)
-	resetStack()
+	resetVM()
 	return false
 }
 
