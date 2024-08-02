@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"unsafe"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
@@ -62,50 +61,52 @@ func (i InterpretError) Error() string {
 func InitVM() {
 	hashtable.InitInternStrings()
 	hashtable.InitGlobals()
-	resetVM()
+	vmobject.GRoots = nil
+	resetStack()
 }
 
 func FreeVM() {
 	hashtable.FreeGlobals()
 	hashtable.FreeInternStrings()
 	vmobject.FreeObjects()
-	resetVM()
+	vmobject.GRoots = nil
+	resetStack()
 }
 
-func resetVM() {
+func resetStack() {
 	GlobalVM.StackTop = 0
-	vmobject.GRoots = nil
 	GlobalVM.FrameCount = 0
 }
 
 func Interpret(code []byte) (vmvalue.Value, error) {
-	chunk := vmchunk.NewChunk()
-	defer chunk.Free()
-
 	var fn *vmobject.ObjFunction
 	var ok bool
 
-	if fn, ok = vmcompiler.Compile(code, &chunk); !ok {
+	if fn, ok = vmcompiler.Compile(code); !ok {
 		return vmvalue.NilValue, InterpretCompileError
 	}
+
+	Push(vmvalue.ObjAsValue(fn))
+	Call(fn, 0)
+
+	return Run()
+}
+
+func debug01Chunk() {
+	frame, chunk := frameChunk()
+	fn := frame.Function
 
 	fnName := "<script>"
 	if fn.Name != nil {
 		fnName = string(fn.Name.Chars)
 	}
+	vmdebug.DisassembleChunk(chunk, fnName)
 
-	Push(vmvalue.ObjAsValue(fn))
-	nextFrame := &GlobalVM.Frames[GlobalVM.FrameCount]
-	nextFrame.Function = fn
-	nextFrame.IP = 0
-	nextFrame.Slots = GlobalVM.Stack[:]
-	GlobalVM.FrameCount++
-
-	vmdebug.DisassembleChunk(&chunk, fnName)
-	return Run()
+	fmt.Println()
+	fmt.Println("== trace execution ==")
 }
 
-func debug0() {
+func debug02Instruction() {
 	if GlobalVM.StackTop > 0 {
 		fmt.Print("          ")
 		for i := range GlobalVM.StackTop {
@@ -129,8 +130,38 @@ func Pop() vmvalue.Value {
 	return GlobalVM.Stack[GlobalVM.StackTop]
 }
 
-func Peek(distance int) vmvalue.Value {
-	return GlobalVM.Stack[GlobalVM.StackTop-1-distance]
+func Peek(distance byte) vmvalue.Value {
+	return GlobalVM.Stack[GlobalVM.StackTop-1-int(distance)]
+}
+
+func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
+	if vmvalue.IsObj(callee) {
+		switch vmvalue.ObjTypeTag(callee) { //nolint:gocritic // TODO fix.
+		case vmobject.ObjTypeFunction:
+			return Call(vmvalue.ValueAsFunction(callee), argCount)
+		}
+	}
+
+	return runtimeError("Can only call functions and classes.")
+}
+
+func Call(function *vmobject.ObjFunction, argCount byte) (ok bool) {
+	iArgs := int(argCount)
+	if iArgs != function.Arity {
+		return runtimeError("Expected %d arguments but got %d.",
+			function.Arity, argCount)
+	}
+
+	if GlobalVM.FrameCount == MaxCallFrames {
+		return runtimeError("Stack overflow.")
+	}
+
+	frame := &GlobalVM.Frames[GlobalVM.FrameCount]
+	GlobalVM.FrameCount++
+	frame.Function = function
+	frame.IP = 0
+	frame.Slots = GlobalVM.Stack[GlobalVM.StackTop-iArgs-1:]
+	return true
 }
 
 func SetGlobal(name *vmobject.ObjString, value vmvalue.Value) bool {
@@ -151,9 +182,7 @@ func GCObjects() *vmobject.Obj {
 
 func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity in Run switch
 	if vmdebug.DebugDisassembler {
-		fmt.Println()
-		fmt.Println("== trace execution ==")
-
+		debug01Chunk()
 		defer fmt.Println()
 	}
 
@@ -163,7 +192,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 			return vmvalue.NilValue, InterpretRuntimeError
 		}
 		if vmdebug.DebugDisassembler {
-			debug0()
+			debug02Instruction()
 		}
 
 		instruction := bytecode.OpCode(readByte())
@@ -244,8 +273,19 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 			frame := currentFrame()
 			offset := readShort()
 			frame.IP -= int(offset)
+		case bytecode.OpCall:
+			argCount := readByte()
+			ok = CallValue(Peek(argCount), argCount)
 		case bytecode.OpReturn:
-			return Pop(), nil
+			callReturnValue := Pop()
+			frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
+			GlobalVM.FrameCount--
+			if GlobalVM.FrameCount == 0 {
+				Pop()
+				return callReturnValue, nil
+			}
+			GlobalVM.StackTop -= frame.Function.Arity + 1
+			Push(callReturnValue)
 		default:
 			ok = runtimeError("Unexpected instruction")
 		}
@@ -337,14 +377,15 @@ func binOpLess(a, b float64) bool {
 }
 
 func currentFrame() *CallFrame {
+	// TODO: optimize.
 	return &GlobalVM.Frames[GlobalVM.FrameCount-1]
 }
 
 func frameChunk() (*CallFrame, *vmchunk.Chunk) {
+	// TODO: optimize.
 	frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
-	ptr := frame.Function.ChunkPtr
-	ch := (**vmchunk.Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
-	return frame, *ch
+	ch := vmchunk.FromUintPtr(frame.Function.ChunkPtr)
+	return frame, ch
 }
 
 func readByte() byte {
@@ -374,11 +415,21 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 	fmt.Fprintf(os.Stderr, format, messageAndArgs...)
 	fmt.Fprintln(os.Stderr)
 
-	frame, chunk := frameChunk()
-	offset := frame.IP - 1
-	line := chunk.Lines.GetLineByOffset(offset)
-	fmt.Fprintf(os.Stderr, "[line %d] in script\n", line)
-	resetVM()
+	for i := range GlobalVM.FrameCount {
+		frame := &GlobalVM.Frames[GlobalVM.FrameCount-1-i]
+		fn := frame.Function
+		chunk := vmchunk.FromUintPtr(fn.ChunkPtr)
+		offset := frame.IP - 1
+		line := chunk.Lines.GetLineByOffset(offset)
+		fmt.Fprintf(os.Stderr, "[line %d] in ", line)
+		if fn.Name == nil {
+			fmt.Fprintln(os.Stderr, "script")
+		} else {
+			fmt.Fprintf(os.Stderr, "%s()\n", string(fn.Name.Chars))
+		}
+	}
+
+	resetStack()
 	return false
 }
 

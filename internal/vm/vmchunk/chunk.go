@@ -21,6 +21,11 @@ func NewChunk() Chunk {
 	return chunk
 }
 
+func FromUintPtr(ptr uintptr) *Chunk {
+	ch := (**Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
+	return *ch
+}
+
 func (chunk *Chunk) resetChunk() {
 	chunk.Code = nil
 	chunk.Count = 0

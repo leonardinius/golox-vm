@@ -33,6 +33,8 @@ type Compiler struct {
 	Locals     [MaxLocalCount]Local
 	LocalCount int
 	ScoreDepth int
+
+	Enclosing *Compiler
 }
 
 type Local struct {
@@ -46,25 +48,29 @@ func (l *Local) SetName(name string) {
 	l.Name.Length = len(l.Name.Source)
 }
 
-func NewCompiler(chunk *vmchunk.Chunk, fnType FunctionType) Compiler {
-	c := Compiler{}
-	c.FnType = fnType
-	c.Function = vmobject.NewFunction(chunk.AsPtr())
-	gCurrent = &c
+func NewCompiler(fnType FunctionType, fnName *vmobject.ObjString) Compiler {
+	chunk := vmchunk.NewChunk()
+	compiler := Compiler{}
+	compiler.FnType = fnType
+	compiler.Function = vmobject.NewFunction(chunk.AsPtr())
+	compiler.Function.FreeChunkFn = chunk.Free
+	compiler.Function.Name = fnName
+	compiler.Enclosing = gCurrent
+	gCurrent = &compiler
 
 	local := &gCurrent.Locals[gCurrent.LocalCount]
 	gCurrent.LocalCount++
 	local.Depth = 0
 	local.SetName("")
-	return c
+	return compiler
 }
 
-func Compile(source []byte, chunk *vmchunk.Chunk) (*vmobject.ObjFunction, bool) {
+func Compile(source []byte) (*vmobject.ObjFunction, bool) {
 	gScanner = scanner.NewScanner(source)
 	defer gScanner.Free()
-	_ = NewCompiler(chunk, FunctionTypeScript)
-
 	gParser = NewParser()
+
+	_ = NewCompiler(FunctionTypeScript, nil)
 
 	advance()
 
@@ -152,7 +158,9 @@ func emitReturn() {
 
 func endCompiler() *vmobject.ObjFunction {
 	emitReturn()
-	return gCurrent.Function
+	fn := gCurrent.Function
+	gCurrent = gCurrent.Enclosing
+	return fn
 }
 
 func beginScope() {

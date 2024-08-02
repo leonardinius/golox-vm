@@ -7,5 +7,5 @@ import (
 var (
 	gScanner scanner.Scanner
 	gParser  Parser
-	gCurrent *Compiler
+	gCurrent *Compiler = nil
 )
