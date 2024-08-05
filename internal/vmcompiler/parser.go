@@ -233,7 +233,7 @@ func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 
 	// end of function
 	fn := endCompiler()
-	emitConstant(vmvalue.ObjAsValue(fn))
+	emitBytes(bytecode.OpClosure, makeConstant(vmvalue.ObjAsValue(fn)))
 }
 
 func funDeclaration() {

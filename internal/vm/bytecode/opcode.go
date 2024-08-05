@@ -30,6 +30,7 @@ const (
 	OpJumpIfFalse
 	OpLoop
 	OpCall
+	OpClosure
 	OpReturn
 )
 
@@ -58,6 +59,7 @@ var gOpCodeStrings = map[OpCode]string{
 	OpJumpIfFalse:  "OP_JUMP_IF_FALSE",
 	OpLoop:         "OP_LOOP",
 	OpCall:         "OP_CALL",
+	OpClosure:      "OP_CLOSURE",
 	OpReturn:       "OP_RETURN",
 }
 

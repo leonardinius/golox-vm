@@ -44,7 +44,8 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 	case bytecode.OpConstant,
 		bytecode.OpGetGlobal,
 		bytecode.OpSetGlobal,
-		bytecode.OpDefineGlobal:
+		bytecode.OpDefineGlobal,
+		bytecode.OpClosure:
 		return s.constantInstruction(instruction, chunk, offset)
 	case bytecode.OpGetLocal,
 		bytecode.OpSetLocal,

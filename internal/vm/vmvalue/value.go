@@ -117,6 +117,10 @@ func IsNativeFn(v Value) bool {
 	return isObjType(v, ObjTypeNative)
 }
 
+func IsClosure(v Value) bool {
+	return isObjType(v, ObjTypeClosure)
+}
+
 func ValueAsString(v Value) *ObjString {
 	return valueAsObj[ObjString](v)
 }
@@ -131,4 +135,8 @@ func ValueAsFunction(v Value) *ObjFunction {
 
 func ValueAsNativeFn(v Value) *ObjNative {
 	return valueAsObj[ObjNative](v)
+}
+
+func ValueAsClosure(v Value) *ObjClosure {
+	return valueAsObj[ObjClosure](v)
 }

@@ -15,10 +15,11 @@ const (
 	ObjTypeString
 	ObjTypeFunction
 	ObjTypeNative
+	ObjTypeClosure
 )
 
 type VMObjectable interface {
-	Obj | ObjString | ObjFunction | ObjNative
+	Obj | ObjString | ObjFunction | ObjNative | ObjClosure
 }
 
 type Obj struct {
@@ -42,6 +43,11 @@ type ObjNative struct {
 	Arity byte
 }
 
+type ObjClosure struct {
+	Obj
+	Fn *ObjFunction
+}
+
 type ObjString struct {
 	Obj
 	Chars []byte
@@ -56,6 +62,7 @@ var (
 	GObjStringSize   = int(unsafe.Sizeof(ObjString{}))
 	GObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
 	GObjNativeFnSize = int(unsafe.Sizeof(ObjNative{}))
+	GObjClosureSize  = int(unsafe.Sizeof(ObjClosure{}))
 )
 
 func castObject[T VMObjectable](o *Obj) *T {
@@ -95,6 +102,9 @@ func FreeObject(obj *Obj) {
 	case ObjTypeNative:
 		v := castObject[ObjNative](obj)
 		vmmem.FreeUnsafePtr[byte](v, GObjNativeFnSize)
+	case ObjTypeClosure:
+		v := castObject[ObjClosure](obj)
+		vmmem.FreeUnsafePtr[byte](v, GObjClosureSize)
 	default:
 		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
 	}
@@ -129,6 +139,12 @@ func NewNativeFunction(fn NativeFn, arity byte) *ObjNative {
 	return value
 }
 
+func NewClosure(fn *ObjFunction) *ObjClosure {
+	value := allocateObject[ObjClosure](ObjTypeClosure, GObjClosureSize)
+	value.Fn = fn
+	return value
+}
+
 func PrintObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
@@ -139,6 +155,9 @@ func PrintObject(obj *Obj) {
 		printFunction(v)
 	case ObjTypeNative:
 		fmt.Print("<native fn>")
+	case ObjTypeClosure:
+		v := castObject[ObjClosure](obj)
+		printFunction(v.Fn)
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}

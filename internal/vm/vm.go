@@ -21,9 +21,9 @@ const (
 )
 
 type CallFrame struct {
-	Function *vmvalue.ObjFunction
-	IP       int
-	Slots    []vmvalue.Value
+	Closure *vmvalue.ObjClosure
+	IP      int
+	Slots   []vmvalue.Value
 }
 
 // VM is the virtual machine.
@@ -88,14 +88,17 @@ func Interpret(code []byte) (vmvalue.Value, error) {
 	}
 
 	Push(vmvalue.ObjAsValue(fn))
-	Call(fn, 0)
+	closure := vmvalue.NewClosure(fn)
+	Pop()
+	Push(vmvalue.ObjAsValue(closure))
+	Call(closure, 0)
 
 	return Run()
 }
 
 func debug01Chunk() {
 	frame, chunk := frameChunk()
-	fn := frame.Function
+	fn := frame.Closure.Fn
 
 	fnName := "<script>"
 	if fn.Name != nil {
@@ -138,8 +141,8 @@ func Peek(distance byte) vmvalue.Value {
 func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 	if vmvalue.IsObj(callee) {
 		switch vmvalue.ObjTypeTag(callee) {
-		case vmvalue.ObjTypeFunction:
-			return Call(vmvalue.ValueAsFunction(callee), argCount)
+		case vmvalue.ObjTypeClosure:
+			return Call(vmvalue.ValueAsClosure(callee), argCount)
 		case vmvalue.ObjTypeNative:
 			native := vmvalue.ValueAsNativeFn(callee)
 			if argCount != native.Arity {
@@ -159,11 +162,11 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 	return runtimeError("Can only call functions and classes.")
 }
 
-func Call(function *vmvalue.ObjFunction, argCount byte) (ok bool) {
+func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
 	iArgs := int(argCount)
-	if iArgs != function.Arity {
+	if iArgs != closure.Fn.Arity {
 		return runtimeError("Expected %d arguments but got %d.",
-			function.Arity, argCount)
+			closure.Fn.Arity, argCount)
 	}
 
 	if GlobalVM.FrameCount == MaxCallFrames {
@@ -172,7 +175,7 @@ func Call(function *vmvalue.ObjFunction, argCount byte) (ok bool) {
 
 	frame := &GlobalVM.Frames[GlobalVM.FrameCount]
 	GlobalVM.FrameCount++
-	frame.Function = function
+	frame.Closure = closure
 	frame.IP = 0
 	frame.Slots = GlobalVM.Stack[GlobalVM.StackTop-iArgs-1:]
 	return true
@@ -287,6 +290,10 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 			argCount := readByte(frame, chunk)
 			ok = CallValue(Peek(argCount), argCount)
 			frame, chunk = frameChunk()
+		case bytecode.OpClosure:
+			fn := vmvalue.ValueAsFunction(readConstant(frame, chunk))
+			closure := vmvalue.NewClosure(fn)
+			Push(vmvalue.ObjAsValue(closure))
 		case bytecode.OpReturn:
 			callReturnValue := Pop()
 			GlobalVM.FrameCount--
@@ -294,7 +301,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 				Pop()
 				return callReturnValue, nil
 			}
-			GlobalVM.StackTop -= frame.Function.Arity + 1
+			GlobalVM.StackTop -= frame.Closure.Fn.Arity + 1
 			Push(callReturnValue)
 			frame, chunk = frameChunk()
 		default:
@@ -389,7 +396,7 @@ func binOpLess(a, b float64) bool {
 
 func frameChunk() (*CallFrame, *vmchunk.Chunk) {
 	frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
-	ch := vmchunk.FromUintPtr(frame.Function.ChunkPtr)
+	ch := vmchunk.FromUintPtr(frame.Closure.Fn.ChunkPtr)
 	return frame, ch
 }
 
@@ -419,7 +426,7 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 
 	for i := range GlobalVM.FrameCount {
 		frame := &GlobalVM.Frames[GlobalVM.FrameCount-1-i]
-		fn := frame.Function
+		fn := frame.Closure.Fn
 		chunk := vmchunk.FromUintPtr(fn.ChunkPtr)
 		offset := frame.IP - 1
 		line := chunk.Lines.GetLineByOffset(offset)
