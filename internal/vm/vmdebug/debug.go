@@ -15,9 +15,8 @@ func DisassembleChunk(chunk *vmchunk.Chunk, name string) {
 	}
 }
 
-func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
+func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) {
 	if DebugDisassembler {
-		return gDD.DisassembleInstruction(chunk, offset)
+		gDD.DisassembleInstruction(chunk, offset)
 	}
-	return 0
 }

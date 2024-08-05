@@ -201,6 +201,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 	}
 
 	ok := true
+	frame, chunk := frameChunk()
 	for {
 		if !ok {
 			return vmvalue.NilValue, InterpretRuntimeError
@@ -209,10 +210,10 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 			debug02Instruction()
 		}
 
-		instruction := bytecode.OpCode(readByte())
+		instruction := bytecode.OpCode(readByte(frame, chunk))
 		switch instruction {
 		case bytecode.OpConstant:
-			constant := readConstant()
+			constant := readConstant(frame, chunk)
 			Push(constant)
 		case bytecode.OpNil:
 			Push(vmvalue.NilValue)
@@ -249,50 +250,45 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 		case bytecode.OpPrint:
 			PrintlnValue(Pop())
 		case bytecode.OpGetLocal:
-			frame := currentFrame()
-			slot := readByte()
+			slot := readByte(frame, chunk)
 			Push(frame.Slots[slot])
 		case bytecode.OpSetLocal:
-			frame := currentFrame()
-			slot := readByte()
+			slot := readByte(frame, chunk)
 			frame.Slots[slot] = Peek(0)
 		case bytecode.OpGetGlobal:
-			name := readString()
+			name := readString(frame, chunk)
 			if value, gok := GetGlobal(name); !gok {
 				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
 			} else {
 				Push(value)
 			}
 		case bytecode.OpSetGlobal:
-			name := readString()
+			name := readString(frame, chunk)
 			if isNewKey := SetGlobal(name, Peek(0)); isNewKey {
 				DeleteGlobal(name)
 				ok = runtimeError("Undefined variable '%s'.", string(name.Chars))
 			}
 		case bytecode.OpDefineGlobal:
-			name := readString()
+			name := readString(frame, chunk)
 			SetGlobal(name, Peek(0))
 			Pop()
 		case bytecode.OpJump:
-			frame := currentFrame()
-			offset := readShort()
+			offset := readShort(frame, chunk)
 			frame.IP += int(offset)
 		case bytecode.OpJumpIfFalse:
-			frame := currentFrame()
-			offset := readShort()
+			offset := readShort(frame, chunk)
 			if isFalsey(Peek(0)) {
 				frame.IP += int(offset)
 			}
 		case bytecode.OpLoop:
-			frame := currentFrame()
-			offset := readShort()
+			offset := readShort(frame, chunk)
 			frame.IP -= int(offset)
 		case bytecode.OpCall:
-			argCount := readByte()
+			argCount := readByte(frame, chunk)
 			ok = CallValue(Peek(argCount), argCount)
+			frame, chunk = frameChunk()
 		case bytecode.OpReturn:
 			callReturnValue := Pop()
-			frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
 			GlobalVM.FrameCount--
 			if GlobalVM.FrameCount == 0 {
 				Pop()
@@ -300,6 +296,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity
 			}
 			GlobalVM.StackTop -= frame.Function.Arity + 1
 			Push(callReturnValue)
+			frame, chunk = frameChunk()
 		default:
 			ok = runtimeError("Unexpected instruction")
 		}
@@ -390,39 +387,30 @@ func binOpLess(a, b float64) bool {
 	return a < b
 }
 
-func currentFrame() *CallFrame {
-	// TODO: optimize.
-	return &GlobalVM.Frames[GlobalVM.FrameCount-1]
-}
-
 func frameChunk() (*CallFrame, *vmchunk.Chunk) {
-	// TODO: optimize.
 	frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
 	ch := vmchunk.FromUintPtr(frame.Function.ChunkPtr)
 	return frame, ch
 }
 
-func readByte() byte {
-	frame, chunk := frameChunk()
+func readByte(frame *CallFrame, chunk *vmchunk.Chunk) byte {
 	frame.IP++
 	return chunk.Code[frame.IP-1]
 }
 
-func readShort() uint16 {
-	frame, chunk := frameChunk()
+func readShort(frame *CallFrame, chunk *vmchunk.Chunk) uint16 {
 	frame.IP += 2
 	return (uint16(chunk.Code[frame.IP-2]) << 8) | uint16(chunk.Code[frame.IP-1])
 }
 
-func readConstant() vmvalue.Value {
-	frame, chunk := frameChunk()
+func readConstant(frame *CallFrame, chunk *vmchunk.Chunk) vmvalue.Value {
 	frame.IP++
 	at := chunk.Code[frame.IP-1]
 	return chunk.ConstantAt(int(at))
 }
 
-func readString() *vmvalue.ObjString {
-	return vmvalue.ValueAsString(readConstant())
+func readString(frame *CallFrame, chunk *vmchunk.Chunk) *vmvalue.ObjString {
+	return vmvalue.ValueAsString(readConstant(frame, chunk))
 }
 
 func runtimeError(format string, messageAndArgs ...any) (ok bool) {
