@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
@@ -17,12 +16,12 @@ func TestBasicOps(t *testing.T) {
 	assert.Equal(t, 0, h.Count())
 
 	chars1 := []byte("s1")
-	s1 := vmobject.NewTakeString(chars1, vmobject.HashString(chars1))
+	s1 := vmvalue.NewTakeString(chars1, vmvalue.HashString(chars1))
 	h.Set(s1, vmvalue.NumberAsValue(10))
 	assert.Equal(t, 1, h.Count())
 
 	chars2 := []byte("s2")
-	s2 := vmobject.NewTakeString(chars2, vmobject.HashString(chars2))
+	s2 := vmvalue.NewTakeString(chars2, vmvalue.HashString(chars2))
 	h.Set(s2, vmvalue.NumberAsValue(20))
 	assert.Equal(t, 2, h.Count())
 
@@ -42,7 +41,7 @@ func TestBasicOps(t *testing.T) {
 	assert.Equal(t, int(11), int(vmvalue.ValueAsNumber(v)))
 
 	chars3 := []byte("s3")
-	s3 := vmobject.NewTakeString(chars3, vmobject.HashString(chars3))
+	s3 := vmvalue.NewTakeString(chars3, vmvalue.HashString(chars3))
 	v, ok = h.Get(s3)
 	assert.False(t, ok)
 	assert.True(t, vmvalue.IsNil(v))
@@ -57,11 +56,11 @@ func TestAdjustSize(t *testing.T) {
 	h := hashtable.NewHashtable()
 	t.Cleanup(h.Free)
 
-	m := make(map[int]*vmobject.ObjString)
+	m := make(map[int]*vmvalue.ObjString)
 
 	for i := range 255 {
 		chars := []byte("string" + strconv.Itoa(i))
-		s := vmobject.NewTakeString(chars, vmobject.HashString(chars))
+		s := vmvalue.NewTakeString(chars, vmvalue.HashString(chars))
 		h.Set(s, vmvalue.NumberAsValue(float64(i)))
 		m[i] = s
 	}
@@ -79,7 +78,7 @@ func TestAdjustSize(t *testing.T) {
 	for e := range 255 {
 		i := 255 + e
 		chars := []byte("string" + strconv.Itoa(i))
-		s := vmobject.NewTakeString(chars, vmobject.HashString(chars))
+		s := vmvalue.NewTakeString(chars, vmvalue.HashString(chars))
 		h.Set(s, vmvalue.NumberAsValue(float64(i)))
 		m[i] = s
 	}

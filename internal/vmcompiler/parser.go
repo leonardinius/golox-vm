@@ -8,7 +8,6 @@ import (
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
@@ -207,7 +206,7 @@ func block() {
 	consume(tokens.TokenRightBrace, "Expect '}' after block.")
 }
 
-func function(fnType FunctionType, fnName *vmobject.ObjString) {
+func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 	_ = NewCompiler(fnType, fnName)
 	beginScope()
 

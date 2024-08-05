@@ -1,4 +1,4 @@
-package vmobject
+package vmvalue
 
 import (
 	"fmt"
@@ -12,12 +12,13 @@ type ObjType byte
 
 const (
 	_ ObjType = iota
-	ObjTypeFunction
 	ObjTypeString
+	ObjTypeFunction
+	ObjTypeNative
 )
 
 type VMObjectable interface {
-	Obj | ObjString | ObjFunction
+	Obj | ObjString | ObjFunction | ObjNative
 }
 
 type Obj struct {
@@ -33,6 +34,14 @@ type ObjFunction struct {
 	Name        *ObjString
 }
 
+type NativeFn func(args ...Value) Value
+
+type ObjNative struct {
+	Obj
+	Fn    NativeFn
+	Arity byte
+}
+
 type ObjString struct {
 	Obj
 	Chars []byte
@@ -46,6 +55,7 @@ var (
 	GObjSize         = int(unsafe.Sizeof(Obj{}))
 	GObjStringSize   = int(unsafe.Sizeof(ObjString{}))
 	GObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
+	GObjNativeFnSize = int(unsafe.Sizeof(ObjNative{}))
 )
 
 func castObject[T VMObjectable](o *Obj) *T {
@@ -73,15 +83,18 @@ func FreeObjects() {
 func FreeObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
-		s := castObject[ObjString](obj)
-		vmmem.FreeArray(s.Chars)
-		vmmem.FreeUnsafePtr[byte](s, GObjStringSize)
+		v := castObject[ObjString](obj)
+		vmmem.FreeArray(v.Chars)
+		vmmem.FreeUnsafePtr[byte](v, GObjStringSize)
 	case ObjTypeFunction:
-		f := castObject[ObjFunction](obj)
-		if f.FreeChunkFn != nil {
-			f.FreeChunkFn()
+		v := castObject[ObjFunction](obj)
+		if v.FreeChunkFn != nil {
+			v.FreeChunkFn()
 		}
-		vmmem.FreeUnsafePtr[byte](f, GObjFunctionSize)
+		vmmem.FreeUnsafePtr[byte](v, GObjFunctionSize)
+	case ObjTypeNative:
+		v := castObject[ObjNative](obj)
+		vmmem.FreeUnsafePtr[byte](v, GObjNativeFnSize)
 	default:
 		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
 	}
@@ -109,14 +122,23 @@ func NewFunction(chunkPtr uintptr) *ObjFunction {
 	return value
 }
 
+func NewNativeFunction(fn NativeFn, arity byte) *ObjNative {
+	value := allocateObject[ObjNative](ObjTypeNative, GObjNativeFnSize)
+	value.Fn = fn
+	value.Arity = arity
+	return value
+}
+
 func PrintObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
-		value := string(castObject[ObjString](obj).Chars)
-		fmt.Print(value)
+		v := string(castObject[ObjString](obj).Chars)
+		fmt.Print(v)
 	case ObjTypeFunction:
-		f := castObject[ObjFunction](obj)
-		printFunction(f)
+		v := castObject[ObjFunction](obj)
+		printFunction(v)
+	case ObjTypeNative:
+		fmt.Print("<native fn>")
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}

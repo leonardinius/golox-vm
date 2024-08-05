@@ -1,4 +1,4 @@
-package vmobject_test
+package vmvalue_test
 
 import (
 	"testing"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
@@ -14,7 +13,7 @@ func TestObjValueNanBoxing(t *testing.T) {
 	t.Run("String", func(t *testing.T) {
 		t.Run("NewObjString", func(t *testing.T) {
 			chars1 := []byte("Hello")
-			objString := vmobject.NewTakeString(chars1, vmobject.HashString(chars1))
+			objString := vmvalue.NewTakeString(chars1, vmvalue.HashString(chars1))
 			value := vmvalue.ObjAsValue(objString)
 			assert.True(t, vmvalue.IsString(value))
 			chars2 := vmvalue.ValueAsStringChars(value)
@@ -24,7 +23,7 @@ func TestObjValueNanBoxing(t *testing.T) {
 
 		t.Run("CopyString", func(t *testing.T) {
 			chars1 := []byte("Hello")
-			objString := vmobject.NewCopyString(chars1, vmobject.HashString(chars1))
+			objString := vmvalue.NewCopyString(chars1, vmvalue.HashString(chars1))
 			value := vmvalue.ObjAsValue(objString)
 			assert.True(t, vmvalue.IsString(value))
 			chars2 := vmvalue.ValueAsStringChars(value)

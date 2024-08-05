@@ -1,7 +1,6 @@
 package hashtable
 
 import (
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
@@ -15,14 +14,14 @@ func FreeGlobals() {
 	gGlobalEnv.Free()
 }
 
-func SetGlobal(name *vmobject.ObjString, value vmvalue.Value) bool {
+func SetGlobal(name *vmvalue.ObjString, value vmvalue.Value) bool {
 	return gGlobalEnv.Set(name, value)
 }
 
-func GetGlobal(name *vmobject.ObjString) (vmvalue.Value, bool) {
+func GetGlobal(name *vmvalue.ObjString) (vmvalue.Value, bool) {
 	return gGlobalEnv.Get(name)
 }
 
-func DeleteGlobal(name *vmobject.ObjString) bool {
+func DeleteGlobal(name *vmvalue.ObjString) bool {
 	return gGlobalEnv.Delete(name)
 }

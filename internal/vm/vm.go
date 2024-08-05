@@ -10,7 +10,7 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
 	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
+	"github.com/leonardinius/goloxvm/internal/vm/vmstd"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 )
@@ -21,7 +21,7 @@ const (
 )
 
 type CallFrame struct {
-	Function *vmobject.ObjFunction
+	Function *vmvalue.ObjFunction
 	IP       int
 	Slots    []vmvalue.Value
 }
@@ -61,15 +61,16 @@ func (i InterpretError) Error() string {
 func InitVM() {
 	hashtable.InitInternStrings()
 	hashtable.InitGlobals()
-	vmobject.GRoots = nil
+	vmvalue.GRoots = nil
+	defineNative("clock", vmstd.StdClockNative, 0)
 	resetStack()
 }
 
 func FreeVM() {
 	hashtable.FreeGlobals()
 	hashtable.FreeInternStrings()
-	vmobject.FreeObjects()
-	vmobject.GRoots = nil
+	vmvalue.FreeObjects()
+	vmvalue.GRoots = nil
 	resetStack()
 }
 
@@ -79,7 +80,7 @@ func resetStack() {
 }
 
 func Interpret(code []byte) (vmvalue.Value, error) {
-	var fn *vmobject.ObjFunction
+	var fn *vmvalue.ObjFunction
 	var ok bool
 
 	if fn, ok = vmcompiler.Compile(code); !ok {
@@ -136,16 +137,29 @@ func Peek(distance byte) vmvalue.Value {
 
 func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 	if vmvalue.IsObj(callee) {
-		switch vmvalue.ObjTypeTag(callee) { //nolint:gocritic // TODO fix.
-		case vmobject.ObjTypeFunction:
+		switch vmvalue.ObjTypeTag(callee) {
+		case vmvalue.ObjTypeFunction:
 			return Call(vmvalue.ValueAsFunction(callee), argCount)
+		case vmvalue.ObjTypeNative:
+			native := vmvalue.ValueAsNativeFn(callee)
+			if argCount != native.Arity {
+				return runtimeError("Expected %d arguments but got %d.",
+					native.Arity, argCount)
+			}
+
+			iArgs := int(argCount)
+			args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
+			value := native.Fn(args...)
+			GlobalVM.StackTop -= iArgs + 1
+			Push(value)
+			return true
 		}
 	}
 
 	return runtimeError("Can only call functions and classes.")
 }
 
-func Call(function *vmobject.ObjFunction, argCount byte) (ok bool) {
+func Call(function *vmvalue.ObjFunction, argCount byte) (ok bool) {
 	iArgs := int(argCount)
 	if iArgs != function.Arity {
 		return runtimeError("Expected %d arguments but got %d.",
@@ -164,20 +178,20 @@ func Call(function *vmobject.ObjFunction, argCount byte) (ok bool) {
 	return true
 }
 
-func SetGlobal(name *vmobject.ObjString, value vmvalue.Value) bool {
+func SetGlobal(name *vmvalue.ObjString, value vmvalue.Value) bool {
 	return hashtable.SetGlobal(name, value)
 }
 
-func GetGlobal(name *vmobject.ObjString) (vmvalue.Value, bool) {
+func GetGlobal(name *vmvalue.ObjString) (vmvalue.Value, bool) {
 	return hashtable.GetGlobal(name)
 }
 
-func DeleteGlobal(name *vmobject.ObjString) bool {
+func DeleteGlobal(name *vmvalue.ObjString) bool {
 	return hashtable.DeleteGlobal(name)
 }
 
-func GCObjects() *vmobject.Obj {
-	return vmobject.GRoots
+func GCObjects() *vmvalue.Obj {
+	return vmvalue.GRoots
 }
 
 func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity in Run switch
@@ -407,7 +421,7 @@ func readConstant() vmvalue.Value {
 	return chunk.ConstantAt(int(at))
 }
 
-func readString() *vmobject.ObjString {
+func readString() *vmvalue.ObjString {
 	return vmvalue.ValueAsString(readConstant())
 }
 
@@ -435,4 +449,16 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 
 func PrintlnValue(v vmvalue.Value) {
 	vmdebug.PrintlnValue(v)
+}
+
+func defineNative(name string, fn vmvalue.NativeFn, arity byte) {
+	nameObj := hashtable.StringInternCopy([]byte(name))
+	nameValue := vmvalue.ObjAsValue(nameObj)
+	Push(nameValue)
+	fnObj := vmvalue.NewNativeFunction(fn, arity)
+	fnValue := vmvalue.ObjAsValue(fnObj)
+	Push(fnValue)
+	SetGlobal(nameObj, vmvalue.ObjAsValue(fnObj))
+	Pop()
+	Pop()
 }

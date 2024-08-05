@@ -6,7 +6,6 @@ import (
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
@@ -27,7 +26,7 @@ const (
 )
 
 type Compiler struct {
-	Function *vmobject.ObjFunction
+	Function *vmvalue.ObjFunction
 	FnType   FunctionType
 
 	Locals     [MaxLocalCount]Local
@@ -48,11 +47,11 @@ func (l *Local) SetName(name string) {
 	l.Name.Length = len(l.Name.Source)
 }
 
-func NewCompiler(fnType FunctionType, fnName *vmobject.ObjString) Compiler {
+func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) Compiler {
 	chunk := vmchunk.NewChunk()
 	compiler := Compiler{}
 	compiler.FnType = fnType
-	compiler.Function = vmobject.NewFunction(chunk.AsPtr())
+	compiler.Function = vmvalue.NewFunction(chunk.AsPtr())
 	compiler.Function.FreeChunkFn = chunk.Free
 	compiler.Function.Name = fnName
 	compiler.Enclosing = gCurrent
@@ -65,7 +64,7 @@ func NewCompiler(fnType FunctionType, fnName *vmobject.ObjString) Compiler {
 	return compiler
 }
 
-func Compile(source []byte) (*vmobject.ObjFunction, bool) {
+func Compile(source []byte) (*vmvalue.ObjFunction, bool) {
 	gScanner = scanner.NewScanner(source)
 	defer gScanner.Free()
 	gParser = NewParser()
@@ -156,7 +155,7 @@ func emitReturn() {
 	emitOpcode(bytecode.OpReturn)
 }
 
-func endCompiler() *vmobject.ObjFunction {
+func endCompiler() *vmvalue.ObjFunction {
 	emitReturn()
 	fn := gCurrent.Function
 	gCurrent = gCurrent.Enclosing
