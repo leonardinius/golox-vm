@@ -1,7 +1,6 @@
 package hashtable
 
 import (
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
@@ -17,30 +16,30 @@ func FreeInternStrings() {
 	gInternStrings.Free()
 }
 
-func StringInternTake(chars []byte) *vmobject.ObjString {
-	hash := vmobject.HashString(chars)
+func StringInternTake(chars []byte) *vmvalue.ObjString {
+	hash := vmvalue.HashString(chars)
 
 	if str := findString(chars, hash); str != nil {
 		return str
 	}
 
-	str := vmobject.NewTakeString(chars, hash)
+	str := vmvalue.NewTakeString(chars, hash)
 	gInternStrings.Set(str, marker)
 	return str
 }
 
-func StringInternCopy(chars []byte) *vmobject.ObjString {
-	hash := vmobject.HashString(chars)
+func StringInternCopy(chars []byte) *vmvalue.ObjString {
+	hash := vmvalue.HashString(chars)
 
 	if str := findString(chars, hash); str != nil {
 		return str
 	}
 
-	str := vmobject.NewCopyString(chars, hash)
+	str := vmvalue.NewCopyString(chars, hash)
 	gInternStrings.Set(str, marker)
 	return str
 }
 
-func findString(chars []byte, hash uint64) *vmobject.ObjString {
+func findString(chars []byte, hash uint64) *vmvalue.ObjString {
 	return gInternStrings.findString(chars, hash)
 }

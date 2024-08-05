@@ -4,7 +4,6 @@ import (
 	"slices"
 
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
@@ -16,7 +15,7 @@ type Table struct {
 }
 
 type entry struct {
-	key   *vmobject.ObjString
+	key   *vmvalue.ObjString
 	value vmvalue.Value
 }
 
@@ -41,7 +40,7 @@ func (h *Table) Count() int {
 }
 
 func (h *Table) Set(
-	key *vmobject.ObjString,
+	key *vmvalue.ObjString,
 	value vmvalue.Value,
 ) bool {
 	loadLimit := int(float64(len(h.entries)) * TableMaxLoad)
@@ -64,7 +63,7 @@ func (h *Table) Set(
 	return isNewKey
 }
 
-func (h *Table) findEntry(entries []entry, key *vmobject.ObjString) *entry {
+func (h *Table) findEntry(entries []entry, key *vmvalue.ObjString) *entry {
 	capacity := uint64(len(entries))
 	index := key.Hash % capacity
 	var tombstone *entry = nil
@@ -120,7 +119,7 @@ func (h *Table) PutAll(from *Table) {
 	}
 }
 
-func (h *Table) Get(key *vmobject.ObjString) (vmvalue.Value, bool) {
+func (h *Table) Get(key *vmvalue.ObjString) (vmvalue.Value, bool) {
 	if h.count == 0 {
 		return vmvalue.NilValue, false
 	}
@@ -132,7 +131,7 @@ func (h *Table) Get(key *vmobject.ObjString) (vmvalue.Value, bool) {
 	return vmvalue.NilValue, false
 }
 
-func (h *Table) Delete(key *vmobject.ObjString) bool {
+func (h *Table) Delete(key *vmvalue.ObjString) bool {
 	if h.count == 0 {
 		return false
 	}
@@ -148,7 +147,7 @@ func (h *Table) Delete(key *vmobject.ObjString) bool {
 	return true
 }
 
-func (h *Table) findString(chars []byte, hash uint64) *vmobject.ObjString {
+func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 	if h.count == 0 {
 		return nil
 	}

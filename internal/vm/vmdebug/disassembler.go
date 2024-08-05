@@ -47,7 +47,8 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 		bytecode.OpDefineGlobal:
 		return s.constantInstruction(instruction, chunk, offset)
 	case bytecode.OpGetLocal,
-		bytecode.OpSetLocal:
+		bytecode.OpSetLocal,
+		bytecode.OpCall:
 		return s.byteInstruction(instruction, chunk, offset)
 	case bytecode.OpJump,
 		bytecode.OpJumpIfFalse:
@@ -79,7 +80,7 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 func (s *stdoutDisassembler) constantInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {
 	constant := chunk.Code[offset+1]
 	fmt.Printf("%-16s %4d '", op, constant)
-	PrintValue(chunk.Constants.At(int(constant)))
+	PrintValue(chunk.ConstantAt(int(constant)))
 	fmt.Println("'")
 	return offset + 2
 }

@@ -159,6 +159,9 @@ func parseVariable(errorMessage string) byte {
 }
 
 func markInitialized() {
+	if gCurrent.ScoreDepth == 0 {
+		return
+	}
 	gCurrent.Locals[gCurrent.LocalCount-1].Depth = gCurrent.ScoreDepth
 }
 
@@ -203,6 +206,43 @@ func block() {
 	consume(tokens.TokenRightBrace, "Expect '}' after block.")
 }
 
+func function(fnType FunctionType, fnName *vmvalue.ObjString) {
+	_ = NewCompiler(fnType, fnName)
+	beginScope()
+
+	consume(tokens.TokenLeftParen, "Expect '(' after function name.")
+	if !check(tokens.TokenRightParen) {
+		for {
+			gCurrent.Function.Arity++
+			if gCurrent.Function.Arity > 255 {
+				errorAtCurrent("Can't have more than 255 parameters.")
+			}
+
+			paramConstant := parseVariable("Expect parameter name.")
+			defineVariable(paramConstant)
+
+			if !match(tokens.TokenComma) {
+				break
+			}
+		}
+	}
+	consume(tokens.TokenRightParen, "Expect ')' after parameters.")
+
+	consume(tokens.TokenLeftBrace, "Expect '{' before function body.")
+	block()
+
+	// end of function
+	fn := endCompiler()
+	emitConstant(vmvalue.ObjAsValue(fn))
+}
+
+func funDeclaration() {
+	global := parseVariable("Expect function name.")
+	markInitialized()
+	function(FunctionTypeFunction, hashtable.StringInternTake(gParser.previous.Lexeme()))
+	defineVariable(global)
+}
+
 func varDeclaration() {
 	global := parseVariable("Expect variable name.")
 
@@ -220,6 +260,20 @@ func printStatement() {
 	expression()
 	consume(tokens.TokenSemicolon, "Expect ';' after value.")
 	emitOpcode(bytecode.OpPrint)
+}
+
+func returnStatement() {
+	if gCurrent.FnType == FunctionTypeScript {
+		errorAtPrev("Can't return from top-level code.")
+	}
+
+	if match(tokens.TokenSemicolon) {
+		emitReturn()
+	} else {
+		expression()
+		consume(tokens.TokenSemicolon, "Expect ';' after return value.")
+		emitOpcode(bytecode.OpReturn)
+	}
 }
 
 func synchronize() {
@@ -247,9 +301,12 @@ func synchronize() {
 }
 
 func declaration() {
-	if match(tokens.TokenVar) {
+	switch {
+	case match(tokens.TokenFun):
+		funDeclaration()
+	case match(tokens.TokenVar):
 		varDeclaration()
-	} else {
+	default:
 		statement()
 	}
 
@@ -259,21 +316,24 @@ func declaration() {
 }
 
 func statement() {
-	if match(tokens.TokenPrint) {
+	switch {
+	case match(tokens.TokenPrint):
 		printStatement()
-	} else if match(tokens.TokenFor) {
+	case match(tokens.TokenFor):
 		forStatement()
-	} else if match(tokens.TokenIf) {
+	case match(tokens.TokenIf):
 		ifStatement()
-	} else if match(tokens.TokenWhile) {
+	case match(tokens.TokenWhile):
 		whileStatement()
-	} else if match(tokens.TokenLeftBrace) {
+	case match(tokens.TokenReturn):
+		returnStatement()
+	case match(tokens.TokenLeftBrace):
 		func() {
 			beginScope()
 			defer endScope()
 			block()
 		}()
-	} else {
+	default:
 		expressionStatement()
 	}
 }
@@ -470,6 +530,29 @@ func binary(ParsePrecedence) {
 	}
 }
 
+func call(ParsePrecedence) {
+	argCount := argumentList()
+	emitBytes(bytecode.OpCall, argCount)
+}
+
+func argumentList() byte {
+	argCount := 0
+	if !check(tokens.TokenRightParen) {
+		for {
+			expression()
+			argCount++
+			if argCount >= 255 {
+				errorAtPrev("Can't have more than 255 arguments.")
+			}
+			if !match(tokens.TokenComma) {
+				break
+			}
+		}
+	}
+	consume(tokens.TokenRightParen, "Expect ')' after arguments.")
+	return byte(argCount)
+}
+
 func unary(ParsePrecedence) {
 	operatorType := gParser.previous.Type
 	parsePrecedence(PrecedenceUnary)
@@ -545,7 +628,7 @@ var rules map[tokens.TokenType]*ParseRule
 
 func init() {
 	rules = map[tokens.TokenType]*ParseRule{
-		tokens.TokenLeftParen:    {grouping, nil, PrecedenceNone},
+		tokens.TokenLeftParen:    {grouping, call, PrecedenceCall},
 		tokens.TokenRightParen:   {nil, nil, PrecedenceNone},
 		tokens.TokenLeftBrace:    {nil, nil, PrecedenceNone},
 		tokens.TokenRightBrace:   {nil, nil, PrecedenceNone},

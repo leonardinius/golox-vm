@@ -3,14 +3,19 @@ package vmdebug
 import (
 	"fmt"
 
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
 func PrintValue(v vmvalue.Value) {
 	switch {
 	case vmvalue.IsNumber(v):
-		fmt.Printf("%g", vmvalue.ValueAsNumber(v))
+		fv := vmvalue.ValueAsNumber(v)
+		iv := int64(fv)
+		if fv == float64(iv) {
+			fmt.Printf("%d.0", iv)
+		} else {
+			fmt.Printf("%g", fv)
+		}
 	case vmvalue.IsNil(v):
 		fmt.Print("nil")
 	case vmvalue.IsBool(v):
@@ -20,7 +25,7 @@ func PrintValue(v vmvalue.Value) {
 			fmt.Print("false")
 		}
 	case vmvalue.IsObj(v):
-		vmobject.PrintObject(vmvalue.ValueAsObj(v))
+		vmvalue.PrintObject(vmvalue.ValueAsObj(v))
 	default:
 		panic(fmt.Sprintf("unexpected value type: %#v", v))
 	}

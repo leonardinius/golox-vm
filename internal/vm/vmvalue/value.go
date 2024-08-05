@@ -3,8 +3,6 @@ package vmvalue
 import (
 	"math"
 	"unsafe"
-
-	"github.com/leonardinius/goloxvm/internal/vm/vmobject"
 )
 
 // Value we use NaN boxing, NaN tagging here.
@@ -83,38 +81,54 @@ func BoolAsValue(b bool) Value {
 	return FalseValue
 }
 
-func ObjAsValue[T vmobject.VMObjectable](v *T) Value {
+func ObjAsValue[T VMObjectable](v *T) Value {
 	ptr := uintptr(unsafe.Pointer(v)) //nolint:gosec // unsafe.Pointer is used here
 	return Value(SignBit | QNAN | uint64(ptr))
 }
 
-func ValueAsObjType[T vmobject.VMObjectable](v Value) *T {
+func valueAsObj[T VMObjectable](v Value) *T {
 	addr := (uint64(v) & ^(SignBit | QNAN))
 	ptr := uintptr(addr)
 	uptr := (**T)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
 	return *uptr
 }
 
-func ValueAsObj(v Value) *vmobject.Obj {
-	return ValueAsObjType[vmobject.Obj](v)
+func ValueAsObj(v Value) *Obj {
+	return valueAsObj[Obj](v)
 }
 
-func ObjTypeTag(v Value) vmobject.ObjType {
+func ObjTypeTag(v Value) ObjType {
 	return ValueAsObj(v).Type
 }
 
-func isObjType(v Value, objType vmobject.ObjType) bool {
+func isObjType(v Value, objType ObjType) bool {
 	return IsObj(v) && ObjTypeTag(v) == objType
 }
 
-func ValueAsString(v Value) *vmobject.ObjString {
-	return ValueAsObjType[vmobject.ObjString](v)
+func IsString(v Value) bool {
+	return isObjType(v, ObjTypeString)
+}
+
+func IsFunction(v Value) bool {
+	return isObjType(v, ObjTypeFunction)
+}
+
+func IsNativeFn(v Value) bool {
+	return isObjType(v, ObjTypeNative)
+}
+
+func ValueAsString(v Value) *ObjString {
+	return valueAsObj[ObjString](v)
 }
 
 func ValueAsStringChars(v Value) []byte {
-	return ValueAsObjType[vmobject.ObjString](v).Chars
+	return valueAsObj[ObjString](v).Chars
 }
 
-func IsString(v Value) bool {
-	return isObjType(v, vmobject.ObjTypeString)
+func ValueAsFunction(v Value) *ObjFunction {
+	return valueAsObj[ObjFunction](v)
+}
+
+func ValueAsNativeFn(v Value) *ObjNative {
+	return valueAsObj[ObjNative](v)
 }
