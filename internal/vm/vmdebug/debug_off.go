@@ -2,4 +2,7 @@
 
 package vmdebug
 
-const DebugDisassembler = false
+const (
+	DebugDisassembler = false
+	DebugAssert       = false
+)
