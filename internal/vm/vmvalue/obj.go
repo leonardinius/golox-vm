@@ -58,15 +58,14 @@ var (
 	GRoots = (*Obj)(nil)
 	gSeed  = maphash.MakeSeed()
 
-	GObjSize         = int(unsafe.Sizeof(Obj{}))
-	GObjStringSize   = int(unsafe.Sizeof(ObjString{}))
-	GObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
-	GObjNativeFnSize = int(unsafe.Sizeof(ObjNative{}))
-	GObjClosureSize  = int(unsafe.Sizeof(ObjClosure{}))
+	gObjStringSize   = int(unsafe.Sizeof(ObjString{}))
+	gObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
+	gObjNativeFnSize = int(unsafe.Sizeof(ObjNative{}))
+	gObjClosureSize  = int(unsafe.Sizeof(ObjClosure{}))
 )
 
 func castObject[T VMObjectable](o *Obj) *T {
-	return (*T)(unsafe.Pointer(o)) //nolint:gosec // unsafe.Pointer is used here
+	return (*T)(unsafe.Pointer(o)) //nolint:gosec
 }
 
 func allocateObject[T VMObjectable](objType ObjType, sizeBytes int) *T {
@@ -92,26 +91,26 @@ func FreeObject(obj *Obj) {
 	case ObjTypeString:
 		v := castObject[ObjString](obj)
 		vmmem.FreeArray(v.Chars)
-		vmmem.FreeUnsafePtr[byte](v, GObjStringSize)
+		vmmem.FreeUnsafePtr[byte](v, gObjStringSize)
 	case ObjTypeFunction:
 		v := castObject[ObjFunction](obj)
 		if v.FreeChunkFn != nil {
 			v.FreeChunkFn()
 		}
-		vmmem.FreeUnsafePtr[byte](v, GObjFunctionSize)
+		vmmem.FreeUnsafePtr[byte](v, gObjFunctionSize)
 	case ObjTypeNative:
 		v := castObject[ObjNative](obj)
-		vmmem.FreeUnsafePtr[byte](v, GObjNativeFnSize)
+		vmmem.FreeUnsafePtr[byte](v, gObjNativeFnSize)
 	case ObjTypeClosure:
 		v := castObject[ObjClosure](obj)
-		vmmem.FreeUnsafePtr[byte](v, GObjClosureSize)
+		vmmem.FreeUnsafePtr[byte](v, gObjClosureSize)
 	default:
 		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
 	}
 }
 
 func NewTakeString(chars []byte, hash uint64) *ObjString {
-	value := allocateObject[ObjString](ObjTypeString, GObjStringSize)
+	value := allocateObject[ObjString](ObjTypeString, gObjStringSize)
 	value.Chars = chars
 	value.Hash = hash
 	return value
@@ -124,7 +123,7 @@ func NewCopyString(chars []byte, hash uint64) *ObjString {
 }
 
 func NewFunction(chunkPtr uintptr) *ObjFunction {
-	value := allocateObject[ObjFunction](ObjTypeFunction, GObjFunctionSize)
+	value := allocateObject[ObjFunction](ObjTypeFunction, gObjFunctionSize)
 	value.Arity = 0
 	value.Name = nil
 	value.ChunkPtr = chunkPtr
@@ -133,14 +132,14 @@ func NewFunction(chunkPtr uintptr) *ObjFunction {
 }
 
 func NewNativeFunction(fn NativeFn, arity byte) *ObjNative {
-	value := allocateObject[ObjNative](ObjTypeNative, GObjNativeFnSize)
+	value := allocateObject[ObjNative](ObjTypeNative, gObjNativeFnSize)
 	value.Fn = fn
 	value.Arity = arity
 	return value
 }
 
 func NewClosure(fn *ObjFunction) *ObjClosure {
-	value := allocateObject[ObjClosure](ObjTypeClosure, GObjClosureSize)
+	value := allocateObject[ObjClosure](ObjTypeClosure, gObjClosureSize)
 	value.Fn = fn
 	return value
 }

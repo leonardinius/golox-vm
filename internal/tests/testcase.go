@@ -65,7 +65,7 @@ func loadTestCases(t *testing.T, wd, dir, fileSuffix string) []Testcase {
 			return nil
 		}
 
-		f, err := os.Open(path) //nolint:gosec // read in test case definition
+		f, err := os.Open(path) //nolint:gosec
 		if err != nil {
 			return err
 		}

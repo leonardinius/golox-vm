@@ -22,7 +22,7 @@ func NewChunk() Chunk {
 }
 
 func FromUintPtr(ptr uintptr) *Chunk {
-	ch := (**Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
+	ch := (**Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec
 	return *ch
 }
 
@@ -41,7 +41,7 @@ func (chunk *Chunk) Free() {
 }
 
 func (chunk *Chunk) AsPtr() uintptr {
-	return uintptr(unsafe.Pointer(chunk)) //nolint:gosec // this is a pointer
+	return uintptr(unsafe.Pointer(chunk)) //nolint:gosec
 }
 
 func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {

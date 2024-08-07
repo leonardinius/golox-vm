@@ -16,14 +16,14 @@ const (
 // Disassembler is an interface for disassembling chunks.
 type stdoutDisassembler struct{}
 
-var _ Disassembler = (*panicAssert)(nil)
+var _ Disassembler = (*stdoutDisassembler)(nil)
 
 func init() {
-	gDD = &panicAssert{}
+	gDD = &stdoutDisassembler{}
 }
 
 // DisassembleChunk implements disassemblerMethods.
-func (s *panicAssert) DisassembleChunk(chunk *vmchunk.Chunk, name string) {
+func (s *stdoutDisassembler) DisassembleChunk(chunk *vmchunk.Chunk, name string) {
 	fmt.Println()
 	fmt.Println("== '" + name + "' byte code ==")
 
@@ -32,7 +32,7 @@ func (s *panicAssert) DisassembleChunk(chunk *vmchunk.Chunk, name string) {
 	}
 }
 
-func (s *panicAssert) DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
+func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 	fmt.Printf("%04d ", offset)
 	line := chunk.DebugGetLine(offset)
 	if offset > 0 && line == chunk.DebugGetLine(offset-1) {
@@ -80,7 +80,7 @@ func (s *panicAssert) DisassembleInstruction(chunk *vmchunk.Chunk, offset int) i
 	}
 }
 
-func (s *panicAssert) constantInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {
+func (s *stdoutDisassembler) constantInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {
 	constant := chunk.Code[offset+1]
 	fmt.Printf("%-16s %4d '", op, constant)
 	PrintValue(chunk.ConstantAt(int(constant)))
@@ -88,19 +88,19 @@ func (s *panicAssert) constantInstruction(op bytecode.OpCode, chunk *vmchunk.Chu
 	return offset + 2
 }
 
-func (s *panicAssert) byteInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {
+func (s *stdoutDisassembler) byteInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {
 	slot := chunk.Code[offset+1]
 	fmt.Printf("%-16s %4d\n", op, slot)
 	return offset + 2
 }
 
-func (s *panicAssert) jumpInstruction(op bytecode.OpCode, sign int, chunk *vmchunk.Chunk, offset int) int {
+func (s *stdoutDisassembler) jumpInstruction(op bytecode.OpCode, sign int, chunk *vmchunk.Chunk, offset int) int {
 	jump := int((uint16(chunk.Code[offset+1]) << 8) | uint16(chunk.Code[offset+2]))
 	fmt.Printf("%-16s %4d -> %d\n", op, offset, offset+3+sign*jump)
 	return offset + 3
 }
 
-func (s *panicAssert) simpleInstruction(op bytecode.OpCode, offset int) int {
+func (s *stdoutDisassembler) simpleInstruction(op bytecode.OpCode, offset int) int {
 	fmt.Println(op.String())
 	return offset + 1
 }

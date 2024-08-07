@@ -111,8 +111,11 @@ func debug01Chunk() {
 }
 
 func debug02Instruction() {
+	frame, chunk := frameChunk()
+	vmdebug.DisassembleInstruction(chunk, frame.IP)
+
 	if GlobalVM.StackTop > 0 {
-		fmt.Print("          ")
+		fmt.Print("        ")
 		for i := range GlobalVM.StackTop {
 			fmt.Print("[ ")
 			vmdebug.PrintValue(GlobalVM.Stack[i])
@@ -120,8 +123,6 @@ func debug02Instruction() {
 		}
 		fmt.Println()
 	}
-	frame, chunk := frameChunk()
-	vmdebug.DisassembleInstruction(chunk, frame.IP)
 }
 
 func Push(value vmvalue.Value) {
@@ -197,7 +198,7 @@ func GCObjects() *vmvalue.Obj {
 	return vmvalue.GRoots
 }
 
-func Run() (vmvalue.Value, error) { //nolint:gocyclo // expected high complexity in Run switch
+func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 	if vmdebug.DebugDisassembler {
 		debug01Chunk()
 		defer fmt.Println()
