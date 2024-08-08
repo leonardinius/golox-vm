@@ -21,9 +21,8 @@ func NewChunk() Chunk {
 	return chunk
 }
 
-func FromUintPtr(ptr uintptr) *Chunk {
-	ch := (**Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec
-	return *ch
+func FromUnsafePtr(ptr unsafe.Pointer) *Chunk {
+	return (*Chunk)(ptr)
 }
 
 func (chunk *Chunk) resetChunk() {
@@ -34,14 +33,14 @@ func (chunk *Chunk) resetChunk() {
 }
 
 func (chunk *Chunk) Free() {
-	chunk.Code = vmmem.FreeArray(chunk.Code)
+	chunk.Code = vmmem.FreeSlice(chunk.Code)
 	chunk.Constants.Free()
 	chunk.Lines.Free()
 	chunk.resetChunk()
 }
 
-func (chunk *Chunk) AsPtr() uintptr {
-	return uintptr(unsafe.Pointer(chunk)) //nolint:gosec
+func (chunk *Chunk) AsPtr() unsafe.Pointer {
+	return unsafe.Pointer(chunk) //nolint:gosec
 }
 
 func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {
@@ -49,10 +48,9 @@ func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {
 }
 
 func (chunk *Chunk) Write(op byte, line int) {
-	chunk.Code = append(chunk.Code, op)
 	if cap(chunk.Code) < chunk.Count+1 {
 		capacity := vmmem.GrowCapacity(cap(chunk.Code))
-		chunk.Code = vmmem.GrowArray(chunk.Code, capacity)
+		chunk.Code = vmmem.GrowSlice(chunk.Code, capacity)
 	}
 	chunk.Code[chunk.Count] = op
 	chunk.Lines.MustWriteOffset(chunk.Count, line)

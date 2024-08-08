@@ -75,8 +75,7 @@ func (s *stdoutDisassembler) DisassembleInstruction(chunk *vmchunk.Chunk, offset
 		bytecode.OpReturn:
 		return s.simpleInstruction(instruction, offset)
 	default:
-		fmt.Printf("dd: unknown opcode %s (%d)\n", instruction, instruction)
-		return offset + 1
+		panic(fmt.Sprintf("dd: unknown opcode (%d)\n", instruction))
 	}
 }
 

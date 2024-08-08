@@ -32,7 +32,7 @@ func (h *Table) reset() {
 }
 
 func (h *Table) Free() {
-	h.entries = vmmem.FreeArray(h.entries)
+	h.entries = vmmem.FreeSlice(h.entries)
 	h.reset()
 }
 
@@ -89,7 +89,7 @@ func (h *Table) findEntry(entries []entry, key *vmvalue.ObjString) *entry {
 }
 
 func (h *Table) adjustCapacity(capacity int) {
-	entries := vmmem.GrowArray(h.entries, capacity)
+	entries := vmmem.GrowSlice(h.entries, capacity)
 	for i := range entries {
 		el := &entries[i]
 		el.key = nil
@@ -109,7 +109,7 @@ func (h *Table) adjustCapacity(capacity int) {
 		h.count++
 	}
 
-	h.entries = vmmem.FreeArray(h.entries)
+	h.entries = vmmem.FreeSlice(h.entries)
 	h.entries = entries
 }
 

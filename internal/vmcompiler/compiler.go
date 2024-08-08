@@ -2,7 +2,6 @@ package vmcompiler
 
 import (
 	"math"
-	"unsafe"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
@@ -51,8 +50,7 @@ func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) Compiler {
 	chunk := vmchunk.NewChunk()
 	compiler := Compiler{}
 	compiler.FnType = fnType
-	compiler.Function = vmvalue.NewFunction(chunk.AsPtr())
-	compiler.Function.FreeChunkFn = chunk.Free
+	compiler.Function = vmvalue.NewFunction(chunk.AsPtr(), chunk.Free)
 	compiler.Function.Name = fnName
 	compiler.Enclosing = gCurrent
 	gCurrent = &compiler
@@ -82,9 +80,7 @@ func Compile(source []byte) (*vmvalue.ObjFunction, bool) {
 }
 
 func currentChunk() *vmchunk.Chunk {
-	ptr := gCurrent.Function.ChunkPtr
-	ch := (**vmchunk.Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec
-	return *ch
+	return vmchunk.FromUnsafePtr(gCurrent.Function.ChunkPtr)
 }
 
 func emitOpcode(op bytecode.OpCode) {

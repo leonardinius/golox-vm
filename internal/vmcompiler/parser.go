@@ -1,9 +1,9 @@
 package vmcompiler
 
 import (
+	"bytes"
 	"fmt"
 	"os"
-	"slices"
 	"strconv"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
@@ -103,7 +103,7 @@ func identifierConstant(token *scanner.Token) byte {
 func resolveLocal(current *Compiler, name *scanner.Token) (slot byte, ok bool) {
 	for i := current.LocalCount - 1; i >= 0; i-- {
 		local := &current.Locals[i]
-		if slices.Equal(name.Lexeme(), local.Name.Lexeme()) {
+		if bytes.Equal(name.Lexeme(), local.Name.Lexeme()) {
 			if local.Depth == -1 {
 				errorAtPrev("Can't read local variable in its own initializer.")
 			}
@@ -139,7 +139,7 @@ func declareVariable() {
 			break
 		}
 
-		if slices.Equal(name.Lexeme(), local.Name.Lexeme()) {
+		if bytes.Equal(name.Lexeme(), local.Name.Lexeme()) {
 			errorAtPrev("Already a variable with this name in this scope.")
 		}
 	}

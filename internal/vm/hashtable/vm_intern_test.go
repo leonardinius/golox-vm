@@ -1,7 +1,7 @@
 package hashtable_test
 
 import (
-	"slices"
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,9 +14,9 @@ func TestStringInternTake(t *testing.T) {
 	t.Cleanup(hashtable.FreeInternStrings)
 
 	chars := []byte("Hello")
-	s1 := hashtable.StringInternTake(slices.Clone(chars))
-	s2 := hashtable.StringInternTake(slices.Clone(chars))
-	s3 := hashtable.StringInternTake(slices.Clone(chars))
+	s1 := hashtable.StringInternTake(bytes.Clone(chars))
+	s2 := hashtable.StringInternTake(bytes.Clone(chars))
+	s3 := hashtable.StringInternTake(bytes.Clone(chars))
 	assert.Same(t, s1, s2)
 	assert.Same(t, s2, s3)
 }

@@ -2,6 +2,11 @@ package vmmem
 
 import "unsafe"
 
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <errno.h>
+import "C"
+
 func GrowCapacity(n int) int {
 	if n < 8 {
 		return 8
@@ -9,15 +14,15 @@ func GrowCapacity(n int) int {
 	return n * 2
 }
 
-func GrowArray[S ~[]E, E any](s S, n int) S {
-	return Reallocate(s, cap(s), n)
+func GrowSlice[S ~[]E, E any](s S, n int) S {
+	return ReallocateSlice(s, cap(s), n)
 }
 
-func FreeArray[S ~[]E, E any](s S) S {
-	return Reallocate(s, cap(s), 0)
+func FreeSlice[S ~[]E, E any](s S) S {
+	return ReallocateSlice(s, cap(s), 0)
 }
 
-func Reallocate[S ~[]E, E any](s S, oldSize, newSize int) S {
+func ReallocateSlice[S ~[]E, E any](s S, oldSize, newSize int) S {
 	if newSize == 0 {
 		s = nil
 	} else if newSize > oldSize {
@@ -29,19 +34,20 @@ func Reallocate[S ~[]E, E any](s S, oldSize, newSize int) S {
 	return s
 }
 
-func AllocateSlice[E any](length int) []E {
-	var empty []E = nil
-	return Reallocate(empty, 0, length)
+func CMalloc(length int) unsafe.Pointer {
+	// force C compiler to allocate memory
+	return C.malloc(C.ulong(length))
 }
 
-func AllocateUnsafePtr[E any](length int) unsafe.Pointer {
-	slice := AllocateSlice[E](length)
-	return unsafe.Pointer(unsafe.SliceData(slice)) //nolint:gosec // return unsafe Pointer here
+func CFree[T any](ptr *T) {
+	C.free(unsafe.Pointer(ptr))
 }
 
-func FreeUnsafePtr[E any, T any](ptr *T, length int) *T {
-	data := (*E)(unsafe.Pointer(ptr))   //nolint:gosec //  unsafe Pointer here
-	slice := unsafe.Slice(data, length) //nolint:gosec //  unsafe Pointer here
-	FreeArray(slice)
-	return nil
+func CMallocBytes(length int) []byte {
+	return unsafe.Slice((*byte)(CMalloc(length)), length)
+}
+
+func CFreeBytes(bytes []byte) {
+	// force C compiler to free memory
+	CFree(unsafe.SliceData(bytes))
 }

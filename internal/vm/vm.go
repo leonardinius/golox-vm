@@ -111,7 +111,7 @@ func debug01Chunk() {
 	fmt.Println("== trace execution ==")
 }
 
-func debug02Instruction() {
+func debug02Instruction(frame *CallFrame, chunk *vmchunk.Chunk) {
 	runtime.GC()
 	if GlobalVM.StackTop > 0 {
 		fmt.Print("        ")
@@ -122,7 +122,6 @@ func debug02Instruction() {
 		}
 		fmt.Println()
 	}
-	frame, chunk := frameChunk()
 	vmdebug.DisassembleInstruction(chunk, frame.IP)
 }
 
@@ -212,7 +211,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo
 			return vmvalue.NilValue, InterpretRuntimeError
 		}
 		if vmdebug.DebugDisassembler {
-			debug02Instruction()
+			debug02Instruction(frame, chunk)
 		}
 
 		instruction := bytecode.OpCode(readByte(frame, chunk))
@@ -364,7 +363,7 @@ func stringConcat() (ok bool) {
 	b := vmvalue.ValueAsStringChars(Pop())
 	a := vmvalue.ValueAsStringChars(Pop())
 	length := len(a) + len(b)
-	chars := vmmem.AllocateSlice[byte](length)
+	chars := vmmem.CMallocBytes(length)
 	copy(chars, a)
 	copy(chars[len(a):], b)
 	str := hashtable.StringInternTake(chars)
@@ -398,7 +397,7 @@ func binOpLess(a, b float64) bool {
 
 func frameChunk() (*CallFrame, *vmchunk.Chunk) {
 	frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
-	ch := vmchunk.FromUintPtr(frame.Closure.Fn.ChunkPtr)
+	ch := vmchunk.FromUnsafePtr(frame.Closure.Fn.ChunkPtr)
 	return frame, ch
 }
 
@@ -429,7 +428,7 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 	for i := range GlobalVM.FrameCount {
 		frame := &GlobalVM.Frames[GlobalVM.FrameCount-1-i]
 		fn := frame.Closure.Fn
-		chunk := vmchunk.FromUintPtr(fn.ChunkPtr)
+		chunk := vmchunk.FromUnsafePtr(fn.ChunkPtr)
 		offset := frame.IP - 1
 		line := chunk.Lines.GetLineByOffset(offset)
 		fmt.Fprintf(os.Stderr, "[line %d] in ", line)

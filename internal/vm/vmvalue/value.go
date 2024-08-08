@@ -88,9 +88,8 @@ func ObjAsValue[T VMObjectable](v *T) Value {
 
 func valueAsObj[T VMObjectable](v Value) *T {
 	addr := (uint64(v) & ^(SignBit | QNAN))
-	ptr := uintptr(addr)
-	uptr := (**T)(unsafe.Pointer(&ptr)) //nolint:gosec
-	return *uptr
+	ptr := *(*unsafe.Pointer)(unsafe.Pointer(&addr)) //nolint:gosec
+	return (*T)(ptr)
 }
 
 func ValueAsObj(v Value) *Obj {

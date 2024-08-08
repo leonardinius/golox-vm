@@ -30,7 +30,7 @@ type Obj struct {
 type ObjFunction struct {
 	Obj
 	Arity       int
-	ChunkPtr    uintptr
+	ChunkPtr    unsafe.Pointer
 	FreeChunkFn func()
 	Name        *ObjString
 }
@@ -69,7 +69,7 @@ func castObject[T VMObjectable](o *Obj) *T {
 }
 
 func allocateObject[T VMObjectable](objType ObjType, sizeBytes int) *T {
-	ptr := vmmem.AllocateUnsafePtr[byte](sizeBytes)
+	ptr := vmmem.CMalloc(sizeBytes)
 	object := ((*Obj)(ptr))
 	object.Type = objType
 	object.Next = GRoots
@@ -90,18 +90,18 @@ func FreeObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
 		v := castObject[ObjString](obj)
-		vmmem.FreeArray(v.Chars)
-		vmmem.FreeUnsafePtr[byte](v, gObjStringSize)
+		vmmem.CFreeBytes(v.Chars)
+		vmmem.CFree(v)
 	case ObjTypeFunction:
 		v := castObject[ObjFunction](obj)
 		v.FreeChunkFn()
-		vmmem.FreeUnsafePtr[byte](v, gObjFunctionSize)
+		vmmem.CFree(v)
 	case ObjTypeNative:
 		v := castObject[ObjNative](obj)
-		vmmem.FreeUnsafePtr[byte](v, gObjNativeFnSize)
+		vmmem.CFree(v)
 	case ObjTypeClosure:
 		v := castObject[ObjClosure](obj)
-		vmmem.FreeUnsafePtr[byte](v, gObjClosureSize)
+		vmmem.CFree(v)
 	default:
 		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
 	}
@@ -115,17 +115,17 @@ func NewTakeString(chars []byte, hash uint64) *ObjString {
 }
 
 func NewCopyString(chars []byte, hash uint64) *ObjString {
-	cloned := vmmem.AllocateSlice[byte](len(chars))
+	cloned := vmmem.CMallocBytes(len(chars))
 	copy(cloned, chars)
 	return NewTakeString(cloned, hash)
 }
 
-func NewFunction(chunkPtr uintptr) *ObjFunction {
+func NewFunction(chunk unsafe.Pointer, freeChunkFn func()) *ObjFunction {
 	value := allocateObject[ObjFunction](ObjTypeFunction, gObjFunctionSize)
 	value.Arity = 0
 	value.Name = nil
-	value.ChunkPtr = chunkPtr
-	value.FreeChunkFn = nil
+	value.ChunkPtr = chunk
+	value.FreeChunkFn = freeChunkFn
 	return value
 }
 

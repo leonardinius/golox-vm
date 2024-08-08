@@ -79,7 +79,7 @@ func (l *Lines) MustWriteOffset(offset, line int) {
 func (l *Lines) ensureCapacity(lineIndex int) {
 	if cap(l.raw) < (lineIndex+1)*3 {
 		capacity := vmmem.GrowCapacity(len(l.raw))
-		l.raw = vmmem.GrowArray(l.raw, capacity)
+		l.raw = vmmem.GrowSlice(l.raw, capacity)
 		l.raw = l.raw[:cap(l.raw)]
 	}
 }

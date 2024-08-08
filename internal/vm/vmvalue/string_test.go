@@ -1,7 +1,7 @@
 package vmvalue_test
 
 import (
-	"slices"
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,8 +12,8 @@ import (
 func TestStringHash(t *testing.T) {
 	chars := []byte("Hello")
 
-	hash1 := vmvalue.HashString(slices.Clone(chars))
-	hash2 := vmvalue.HashString(slices.Clone(chars))
+	hash1 := vmvalue.HashString(bytes.Clone(chars))
+	hash2 := vmvalue.HashString(bytes.Clone(chars))
 
 	assert.Equal(t, hash1, hash2)
 }
