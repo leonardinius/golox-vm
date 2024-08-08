@@ -94,7 +94,7 @@ func FreeObject(obj *Obj) {
 		vmmem.CFree(v)
 	case ObjTypeFunction:
 		v := castObject[ObjFunction](obj)
-		v.FreeChunkFn()
+		// v.FreeChunkFn() // TODO fix me
 		vmmem.CFree(v)
 	case ObjTypeNative:
 		v := castObject[ObjNative](obj)

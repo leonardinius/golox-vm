@@ -18,39 +18,7 @@ type Testcase struct {
 	Expected string
 }
 
-var (
-	errNoProjectDir = errors.New("unable to locate project directory")
-	errNoTestCases  = errors.New("no test cases")
-)
-
-func fileExists(filePath string) bool {
-	_, err := os.Stat(filePath)
-	if err == nil {
-		return true
-	}
-	if os.IsNotExist(err) {
-		return false
-	}
-	return false
-}
-
-func projectDir() (string, error) {
-	d, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	// walk back up to find the go.mod file
-	for {
-		if fileExists(filepath.Join(d, "go.mod")) {
-			return d, nil
-		}
-		if d == "" || d == "." {
-			return d, errNoProjectDir
-		}
-		d = filepath.Dir(d)
-	}
-}
+var errNoTestCases = errors.New("no test cases")
 
 func loadTestCases(t *testing.T, wd, dir, fileSuffix string) []Testcase {
 	t.Helper()
@@ -115,7 +83,7 @@ func loadTestCases(t *testing.T, wd, dir, fileSuffix string) []Testcase {
 
 func LoadFromDir(t *testing.T, dir string) []Testcase {
 	t.Helper()
-	wd, err := projectDir()
+	prjDir, err := projectDir()
 	require.NoError(t, err)
-	return loadTestCases(t, wd, dir, ".testcase")
+	return loadTestCases(t, prjDir, dir, ".testcase")
 }

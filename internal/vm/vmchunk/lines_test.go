@@ -14,9 +14,9 @@ func TestSetOffsetShouldValidateInput(t *testing.T) {
 	lines.Init()
 
 	lines.MustWriteOffset(1, 1)
-	runtime.GC()
+	gc()
 	lines.MustWriteOffset(2, 1)
-	runtime.GC()
+	gc()
 	assert.PanicsWithValue(t, "offset must be non-decreasing", func() { lines.MustWriteOffset(2, 1) })
 }
 
@@ -28,13 +28,13 @@ func TestGetLine404ShouldFailGracefully(t *testing.T) {
 	assert.Equal(t, -1, lines.GetLineByOffset(1))
 
 	lines.MustWriteOffset(0, 1)
-	runtime.GC()
+	gc()
 	assert.Equal(t, -1, lines.GetLineByOffset(-1))
 	assert.Equal(t, 1, lines.GetLineByOffset(0))
 	assert.Equal(t, -1, lines.GetLineByOffset(1))
 
 	lines.MustWriteOffset(1, 1)
-	runtime.GC()
+	gc()
 	assert.Equal(t, 1, lines.GetLineByOffset(0))
 	assert.Equal(t, 1, lines.GetLineByOffset(1))
 	assert.Equal(t, -1, lines.GetLineByOffset(2))
@@ -45,11 +45,11 @@ func TestEncodeDecodeLinesInformation(t *testing.T) {
 	lines.Init()
 
 	lines.MustWriteOffset(0, 1)
-	runtime.GC()
+	gc()
 	lines.MustWriteOffset(1, 2)
-	runtime.GC()
+	gc()
 	lines.MustWriteOffset(2, 3)
-	runtime.GC()
+	gc()
 	assert.Equal(t, 1, lines.GetLineByOffset(0))
 	assert.Equal(t, 2, lines.GetLineByOffset(1))
 	assert.Equal(t, 3, lines.GetLineByOffset(2))
@@ -61,14 +61,14 @@ func TestEncodeDecodeLinesInformation(t *testing.T) {
 	lines.MustWriteOffset(7, 3)
 	lines.MustWriteOffset(8, 3)
 	lines.MustWriteOffset(9, 3)
-	runtime.GC()
+	gc()
 	assert.Equal(t, 3, lines.GetLineByOffset(3))
 	assert.Equal(t, 3, lines.GetLineByOffset(9))
 
 	lines.MustWriteOffset(265, 5)
 	lines.MustWriteOffset(266, 6)
 	lines.MustWriteOffset(267, 7)
-	runtime.GC()
+	gc()
 	assert.Equal(t, 5, lines.GetLineByOffset(265))
 	assert.Equal(t, 6, lines.GetLineByOffset(266))
 	assert.Equal(t, 7, lines.GetLineByOffset(267))
@@ -78,7 +78,7 @@ func TestEncodeDecodeLinesInformation(t *testing.T) {
 	lines.MustWriteOffset(1026, 8)
 	lines.MustWriteOffset(1027, 9)
 	lines.MustWriteOffset(1028, 10)
-	runtime.GC()
+	gc()
 	assert.Equal(t, 8, lines.GetLineByOffset(1024))
 	assert.Equal(t, 8, lines.GetLineByOffset(1025))
 	assert.Equal(t, 8, lines.GetLineByOffset(1026))
@@ -86,4 +86,8 @@ func TestEncodeDecodeLinesInformation(t *testing.T) {
 	assert.Equal(t, 10, lines.GetLineByOffset(1028))
 
 	lines.Free()
+}
+
+func gc() {
+	runtime.GC()
 }

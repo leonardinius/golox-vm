@@ -4,21 +4,18 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/chzyer/readline"
-
-	"github.com/leonardinius/goloxvm/internal/vm"
+	"github.com/leonardinius/goloxvm/internal/cmd"
 	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 )
 
 func main() {
-	os.Exit(mainApp())
+	os.Exit(mainCli(os.Args[1:]...))
 }
 
-func mainApp() int {
+func mainCli(args ...string) int {
 	cfgPproff := vmdebug.LoadPprofConfigFromEnv()
 
 	if cfgPproff.On && cfgPproff.CPUProfile != "" {
@@ -36,7 +33,7 @@ func mainApp() int {
 		defer pprof.StopCPUProfile()
 	}
 
-	code := mainCli()
+	code := cmd.Main(args...)
 
 	if cfgPproff.On && cfgPproff.MemProfile != "" {
 		f, err := os.Create(cfgPproff.MemProfile)
@@ -54,66 +51,6 @@ func mainApp() int {
 	}
 
 	return code
-}
-
-// mainCli is the entry point for the CLI
-// It handles the command line arguments and calls the appropriate functions
-// It also initializes and frees the VM.
-func mainCli() int {
-	args := os.Args[1:]
-	vm.InitVM()
-
-	var err error
-	if len(args) == 0 {
-		fmt.Println("Welcome to the GoLox-VM REPL!")
-		err = repl("repl")
-	} else if len(args) == 1 {
-		err = runFile(args[0])
-	} else {
-		fmt.Printf("Usage: %s [path]\n", filepath.Base(os.Args[0]))
-		return 64
-	}
-
-	vm.FreeVM()
-
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
-		return 65
-	}
-
-	return 0
-}
-
-func repl(welcome string) error {
-	rl, err := readline.New(welcome + "> ")
-	if err != nil {
-		return err
-	}
-	defer ioClose(rl)
-
-	for {
-		line, err := rl.ReadSlice()
-		if err != nil {
-			return err
-		}
-
-		if value, err := vm.Interpret(line); err == nil {
-			vm.PrintlnValue(value)
-		}
-		// else {
-		// Do nothing
-		// interpreter reports errors to stderr
-		// fmt.Println(err)
-		//}
-	}
-}
-
-func runFile(script string) error {
-	data, err := os.ReadFile(script) //nolint:gosec
-	if err == nil {
-		_, err = vm.Interpret(data)
-	}
-	return err
 }
 
 func ioClose(c io.Closer) {

@@ -53,7 +53,7 @@ clean: ## Clean-up build artifacts
 	@rm -rf ${BUILDOUT}
 
 .PHONY: test
-test: clean go/test ## Runs all tests
+test: clean go/test go/test_e2e ## Runs all tests
 
 .PHONY: lint
 lint: go/lint ## Runs all linters
@@ -90,9 +90,14 @@ go/lint: $(BIN)/golangci-lint ### Lints the codebase using golangci-lint
 	$(BIN)/golangci-lint run --modules-download-mode=readonly --config .golangci.yml
 
 .PHONY: go/test
-go/test: $(BIN)/gotestsum ### Runs all tests
+go/test: $(BIN)/gotestsum ### Runs unit tests
 	@echo -e "$(CYAN)--- go test ...$(CLEAR)"
-	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./...
+	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./internal/...
+
+.PHONY: go/test_e2e
+go/test_e2e: $(BIN)/gotestsum ### Runs e2e tests
+	@echo -e "$(CYAN)--- go test e2e ...$(CLEAR)"
+	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./test_e2e/...
 
 .PHONY: go/release
 go/release: ### Build

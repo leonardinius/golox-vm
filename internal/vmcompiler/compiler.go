@@ -5,6 +5,7 @@ import (
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
@@ -155,6 +156,14 @@ func endCompiler() *vmvalue.ObjFunction {
 	emitReturn()
 	fn := gCurrent.Function
 	gCurrent = gCurrent.Enclosing
+	if !gParser.hadError {
+		fnName := "<script>"
+		if fn.Name != nil {
+			fnName = string(fn.Name.Chars)
+		}
+		chunk := vmchunk.FromUnsafePtr(fn.ChunkPtr)
+		vmdebug.DisassembleChunk(chunk, fnName)
+	}
 	return fn
 }
 

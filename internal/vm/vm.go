@@ -97,22 +97,7 @@ func Interpret(code []byte) (vmvalue.Value, error) {
 	return Run()
 }
 
-func debug01Chunk() {
-	frame, chunk := frameChunk()
-	fn := frame.Closure.Fn
-
-	fnName := "<script>"
-	if fn.Name != nil {
-		fnName = string(fn.Name.Chars)
-	}
-	vmdebug.DisassembleChunk(chunk, fnName)
-
-	fmt.Println()
-	fmt.Println("== trace execution ==")
-}
-
-func debug02Instruction(frame *CallFrame, chunk *vmchunk.Chunk) {
-	runtime.GC()
+func debugRunInstruction(frame *CallFrame, chunk *vmchunk.Chunk) {
 	if GlobalVM.StackTop > 0 {
 		fmt.Print("        ")
 		for i := range GlobalVM.StackTop {
@@ -200,7 +185,7 @@ func GCObjects() *vmvalue.Obj {
 
 func Run() (vmvalue.Value, error) { //nolint:gocyclo
 	if vmdebug.DebugDisassembler {
-		debug01Chunk()
+		fmt.Println("== trace execution ==")
 		defer fmt.Println()
 	}
 
@@ -210,8 +195,10 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo
 		if !ok {
 			return vmvalue.NilValue, InterpretRuntimeError
 		}
+
+		runtime.GC() // TODO fix it
 		if vmdebug.DebugDisassembler {
-			debug02Instruction(frame, chunk)
+			debugRunInstruction(frame, chunk)
 		}
 
 		instruction := bytecode.OpCode(readByte(frame, chunk))

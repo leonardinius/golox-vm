@@ -1,11 +1,10 @@
 package vmmem
 
-import "unsafe"
-
 // #include <stdio.h>
 // #include <stdlib.h>
 // #include <errno.h>
-import "C"
+import "C"      //nolint:gocritic // dupImport
+import "unsafe" //nolint:gocritic // dupImport
 
 func GrowCapacity(n int) int {
 	if n < 8 {
