@@ -94,9 +94,7 @@ func FreeObject(obj *Obj) {
 		vmmem.FreeUnsafePtr[byte](v, gObjStringSize)
 	case ObjTypeFunction:
 		v := castObject[ObjFunction](obj)
-		if v.FreeChunkFn != nil {
-			v.FreeChunkFn()
-		}
+		v.FreeChunkFn()
 		vmmem.FreeUnsafePtr[byte](v, gObjFunctionSize)
 	case ObjTypeNative:
 		v := castObject[ObjNative](obj)
