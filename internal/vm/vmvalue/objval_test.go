@@ -1,6 +1,7 @@
 package vmvalue_test
 
 import (
+	"runtime"
 	"testing"
 	"unsafe"
 
@@ -41,5 +42,5 @@ func TestObjValueNanBoxing(t *testing.T) {
 }
 
 func gc() {
-	// runtime.GC()
+	runtime.GC()
 }
