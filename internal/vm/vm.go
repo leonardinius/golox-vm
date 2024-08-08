@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
@@ -111,9 +112,7 @@ func debug01Chunk() {
 }
 
 func debug02Instruction() {
-	frame, chunk := frameChunk()
-	vmdebug.DisassembleInstruction(chunk, frame.IP)
-
+	runtime.GC()
 	if GlobalVM.StackTop > 0 {
 		fmt.Print("        ")
 		for i := range GlobalVM.StackTop {
@@ -123,6 +122,8 @@ func debug02Instruction() {
 		}
 		fmt.Println()
 	}
+	frame, chunk := frameChunk()
+	vmdebug.DisassembleInstruction(chunk, frame.IP)
 }
 
 func Push(value vmvalue.Value) {
@@ -198,7 +199,7 @@ func GCObjects() *vmvalue.Obj {
 	return vmvalue.GRoots
 }
 
-func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
+func Run() (vmvalue.Value, error) { //nolint:gocyclo
 	if vmdebug.DebugDisassembler {
 		debug01Chunk()
 		defer fmt.Println()

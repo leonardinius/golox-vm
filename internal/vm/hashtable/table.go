@@ -1,7 +1,7 @@
 package hashtable
 
 import (
-	"slices"
+	"bytes"
 
 	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
@@ -161,9 +161,10 @@ func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 	index := hash & mask
 	for {
 		el := &h.entries[index]
+
 		if el.key == nil && vmvalue.IsNil(el.value) {
 			return nil
-		} else if hash == el.key.Hash && slices.Equal(chars, el.key.Chars) {
+		} else if hash == el.key.Hash && bytes.Equal(chars, el.key.Chars) {
 			return el.key
 		}
 		index = (index + 1) & mask

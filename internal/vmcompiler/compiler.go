@@ -83,7 +83,7 @@ func Compile(source []byte) (*vmvalue.ObjFunction, bool) {
 
 func currentChunk() *vmchunk.Chunk {
 	ptr := gCurrent.Function.ChunkPtr
-	ch := (**vmchunk.Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
+	ch := (**vmchunk.Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec
 	return *ch
 }
 

@@ -72,7 +72,7 @@ run: ## Runs golox-vm. Use 'make ARGS="script.lox" run' to pass arguments
 .PHONY: rund
 rund: ## Runs goloxd-vm. Use 'make ARGS="script.lox" run' to pass arguments
 	@echo -e "$(CYAN)--- run ...$(CLEAR)"
-	go run -tags debug ./main.go $(ARGS)
+	go run -race -tags debug ./main.go $(ARGS)
 
 ###@: Go
 .PHONY: go/format

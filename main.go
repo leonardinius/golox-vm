@@ -109,7 +109,7 @@ func repl(welcome string) error {
 }
 
 func runFile(script string) error {
-	data, err := os.ReadFile(script) //nolint:gosec // get the data
+	data, err := os.ReadFile(script) //nolint:gosec
 	if err == nil {
 		_, err = vm.Interpret(data)
 	}

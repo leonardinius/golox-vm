@@ -25,8 +25,9 @@
   "go.vetOnSave": "off",
   "go.formatTool": "goimports",
   "go.testFlags": [
-    "-v",
+    // "-gcflags=all=-d=checkptr",
     // "-race",
+    "-v",
     "-count=1",
   ],
   "go.testTimeout": "60s",
