@@ -1,19 +1,21 @@
 package vmdebug
 
-import "github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+import (
+	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+)
 
-type Assert interface {
+type asserts interface {
 	Assertf(condition bool, message string, args ...any)
 }
 
-type Disassembler interface {
+type disassembler interface {
 	DisassembleChunk(chunk *vmchunk.Chunk, name string)
 	DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int
 }
 
 var (
-	gDD     Disassembler = nil
-	gAssert Assert       = nil
+	gDD     disassembler = nil
+	gAssert asserts      = nil
 )
 
 func Assertf(condition bool, message string, args ...any) {

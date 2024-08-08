@@ -81,7 +81,7 @@ func Compile(source []byte) (*vmvalue.ObjFunction, bool) {
 }
 
 func currentChunk() *vmchunk.Chunk {
-	return vmchunk.FromUnsafePtr(gCurrent.Function.ChunkPtr)
+	return vmchunk.FromPtr(gCurrent.Function.Chunk)
 }
 
 func emitOpcode(op bytecode.OpCode) {
@@ -161,7 +161,7 @@ func endCompiler() *vmvalue.ObjFunction {
 		if fn.Name != nil {
 			fnName = string(fn.Name.Chars)
 		}
-		chunk := vmchunk.FromUnsafePtr(fn.ChunkPtr)
+		chunk := vmchunk.FromPtr(fn.Chunk)
 		vmdebug.DisassembleChunk(chunk, fnName)
 	}
 	return fn

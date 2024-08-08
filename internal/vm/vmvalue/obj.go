@@ -22,17 +22,40 @@ type VMObjectable interface {
 	Obj | ObjString | ObjFunction | ObjNative | ObjClosure
 }
 
+type vmGc interface {
+	gc()
+}
+
+var (
+	_ vmGc = (*Obj)(nil)
+	_ vmGc = (*ObjString)(nil)
+	_ vmGc = (*ObjFunction)(nil)
+	_ vmGc = (*ObjNative)(nil)
+	_ vmGc = (*ObjClosure)(nil)
+)
+
 type Obj struct {
 	Type ObjType
 	Next *Obj
 }
 
+// gc implements vmGc.
+func (o *Obj) gc() {
+	panic(fmt.Sprintf("unable to free object of type %d", o.Type))
+}
+
 type ObjFunction struct {
 	Obj
 	Arity       int
-	ChunkPtr    unsafe.Pointer
+	Chunk       any
 	FreeChunkFn func()
 	Name        *ObjString
+}
+
+// gc implements vmGc.
+// Subtle: this method shadows the method (Obj).gc of ObjFunction.Obj.
+func (o *ObjFunction) gc() {
+	o.FreeChunkFn()
 }
 
 type NativeFn func(args ...Value) Value
@@ -43,9 +66,19 @@ type ObjNative struct {
 	Arity byte
 }
 
+// gc implements vmGc.
+// Subtle: this method shadows the method (Obj).gc of ObjNative.Obj.
+func (o *ObjNative) gc() {
+}
+
 type ObjClosure struct {
 	Obj
 	Fn *ObjFunction
+}
+
+// gc implements vmGc.
+// Subtle: this method shadows the method (Obj).gc of ObjClosure.Obj.
+func (o *ObjClosure) gc() {
 }
 
 type ObjString struct {
@@ -54,90 +87,88 @@ type ObjString struct {
 	Hash  uint64
 }
 
+// gc implements vmGc.
+// Subtle: this method shadows the method (Obj).gc of ObjString.Obj.
+func (o *ObjString) gc() {
+	o.Chars = vmmem.FreeSlice(o.Chars)
+}
+
 var (
 	GRoots = (*Obj)(nil)
 	gSeed  = maphash.MakeSeed()
-
-	gObjStringSize   = int(unsafe.Sizeof(ObjString{}))
-	gObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
-	gObjNativeFnSize = int(unsafe.Sizeof(ObjNative{}))
-	gObjClosureSize  = int(unsafe.Sizeof(ObjClosure{}))
 )
 
 func castObject[T VMObjectable](o *Obj) *T {
 	return (*T)(unsafe.Pointer(o)) //nolint:gosec
 }
 
-func allocateObject[T VMObjectable](objType ObjType, sizeBytes int) *T {
-	ptr := vmmem.CMalloc(sizeBytes)
-	object := ((*Obj)(ptr))
+func allocateObject[T VMObjectable](objType ObjType) *T {
+	o := new(T)
+	object := (*Obj)(unsafe.Pointer(o)) //nolint:gosec
 	object.Type = objType
 	object.Next = GRoots
 	GRoots = object
-	return (*T)(ptr)
+	return o
 }
 
 func FreeObjects() {
-	obj := GRoots
-	for obj != nil {
-		next := obj.Next
-		FreeObject(obj)
-		obj = next
+	for GRoots != nil {
+		var obj *Obj = GRoots.Next
+		FreeObject(GRoots)
+		GRoots = obj
 	}
 }
 
-func FreeObject(obj *Obj) {
-	switch obj.Type {
+func FreeObject(o *Obj) {
+	switch o.Type {
 	case ObjTypeString:
-		v := castObject[ObjString](obj)
-		vmmem.CFreeBytes(v.Chars)
-		vmmem.CFree(v)
+		v := castObject[ObjString](o)
+		v.gc()
 	case ObjTypeFunction:
-		v := castObject[ObjFunction](obj)
-		// v.FreeChunkFn() // TODO fix me
-		vmmem.CFree(v)
+		v := castObject[ObjFunction](o)
+		v.gc()
 	case ObjTypeNative:
-		v := castObject[ObjNative](obj)
-		vmmem.CFree(v)
+		v := castObject[ObjNative](o)
+		v.gc()
 	case ObjTypeClosure:
-		v := castObject[ObjClosure](obj)
-		vmmem.CFree(v)
+		v := castObject[ObjClosure](o)
+		v.gc()
 	default:
-		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
+		o.gc()
 	}
 }
 
 func NewTakeString(chars []byte, hash uint64) *ObjString {
-	value := allocateObject[ObjString](ObjTypeString, gObjStringSize)
+	value := allocateObject[ObjString](ObjTypeString)
 	value.Chars = chars
 	value.Hash = hash
 	return value
 }
 
 func NewCopyString(chars []byte, hash uint64) *ObjString {
-	cloned := vmmem.CMallocBytes(len(chars))
+	cloned := vmmem.AllocateSlice[byte](len(chars))
 	copy(cloned, chars)
 	return NewTakeString(cloned, hash)
 }
 
-func NewFunction(chunk unsafe.Pointer, freeChunkFn func()) *ObjFunction {
-	value := allocateObject[ObjFunction](ObjTypeFunction, gObjFunctionSize)
+func NewFunction(chunk any, freeChunkFn func()) *ObjFunction {
+	value := allocateObject[ObjFunction](ObjTypeFunction)
 	value.Arity = 0
 	value.Name = nil
-	value.ChunkPtr = chunk
+	value.Chunk = chunk
 	value.FreeChunkFn = freeChunkFn
 	return value
 }
 
 func NewNativeFunction(fn NativeFn, arity byte) *ObjNative {
-	value := allocateObject[ObjNative](ObjTypeNative, gObjNativeFnSize)
+	value := allocateObject[ObjNative](ObjTypeNative)
 	value.Fn = fn
 	value.Arity = arity
 	return value
 }
 
 func NewClosure(fn *ObjFunction) *ObjClosure {
-	value := allocateObject[ObjClosure](ObjTypeClosure, gObjClosureSize)
+	value := allocateObject[ObjClosure](ObjTypeClosure)
 	value.Fn = fn
 	return value
 }

@@ -16,7 +16,7 @@ const (
 // Disassembler is an interface for disassembling chunks.
 type stdoutDisassembler struct{}
 
-var _ Disassembler = (*stdoutDisassembler)(nil)
+var _ disassembler = (*stdoutDisassembler)(nil)
 
 func init() {
 	gDD = &stdoutDisassembler{}

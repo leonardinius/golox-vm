@@ -3,8 +3,8 @@ package vmmem
 // #include <stdio.h>
 // #include <stdlib.h>
 // #include <errno.h>
-import "C"      //nolint:gocritic // dupImport
-import "unsafe" //nolint:gocritic // dupImport
+import "C" //nolint:gocritic // dupImport
+//nolint:gocritic // dupImport
 
 func GrowCapacity(n int) int {
 	if n < 8 {
@@ -33,20 +33,25 @@ func ReallocateSlice[S ~[]E, E any](s S, oldSize, newSize int) S {
 	return s
 }
 
-func CMalloc(length int) unsafe.Pointer {
-	// force C compiler to allocate memory
-	return C.malloc(C.ulong(length))
+func AllocateSlice[E any](size int) []E {
+	var slice []E
+	return ReallocateSlice(slice, 0, size)
 }
 
-func CFree[T any](ptr *T) {
-	C.free(unsafe.Pointer(ptr))
-}
+// func CMalloc(length int) unsafe.Pointer {
+// 	// force C compiler to allocate memory
+// 	return C.malloc(C.ulong(length))
+// }
 
-func CMallocBytes(length int) []byte {
-	return unsafe.Slice((*byte)(CMalloc(length)), length)
-}
+// func CFree[T any](ptr *T) {
+// 	C.free(unsafe.Pointer(ptr))
+// }
 
-func CFreeBytes(bytes []byte) {
-	// force C compiler to free memory
-	CFree(unsafe.SliceData(bytes))
-}
+// func CMallocBytes(length int) []byte {
+// 	return unsafe.Slice((*byte)(CMalloc(length)), length)
+// }
+
+// func CFreeBytes(bytes []byte) {
+// 	// force C compiler to free memory
+// 	CFree(unsafe.SliceData(bytes))
+// }

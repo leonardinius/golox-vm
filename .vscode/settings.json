@@ -18,17 +18,16 @@
     "formatting.local": "github.com/leonardinius/goloxvm",
     "ui.semanticTokens": true,
     "build.buildFlags": [
-      "-tags",
-      "debug",
+      "-tags=debug",
     ],
   },
   "go.vetOnSave": "off",
   "go.formatTool": "goimports",
   "go.testFlags": [
-    // "-gcflags=all=-d=checkptr",
     // "-race",
     "-v",
     "-count=1",
+    // "-tags=debug",
   ],
   "go.testTimeout": "60s",
   "[go]": {

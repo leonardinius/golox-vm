@@ -1,8 +1,6 @@
 package vmchunk
 
 import (
-	"unsafe"
-
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
@@ -21,8 +19,8 @@ func NewChunk() *Chunk {
 	return chunk
 }
 
-func FromUnsafePtr(ptr unsafe.Pointer) *Chunk {
-	return (*Chunk)(ptr)
+func FromPtr(ptr any) *Chunk {
+	return ptr.(*Chunk)
 }
 
 func (chunk *Chunk) resetChunk() {
@@ -39,8 +37,8 @@ func (chunk *Chunk) Free() {
 	chunk.resetChunk()
 }
 
-func (chunk *Chunk) AsPtr() unsafe.Pointer {
-	return unsafe.Pointer(chunk) //nolint:gosec
+func (chunk *Chunk) AsPtr() any {
+	return any(chunk)
 }
 
 func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {

@@ -10,7 +10,7 @@ const (
 
 type panicAssert struct{}
 
-var _ Assert = (*panicAssert)(nil)
+var _ asserts = (*panicAssert)(nil)
 
 // Assertf implements AssertCond.
 func (s *panicAssert) Assertf(condition bool, message string, args ...any) {
