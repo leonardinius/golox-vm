@@ -19,12 +19,14 @@
     "ui.semanticTokens": true,
     "build.buildFlags": [
       "-tags=debug",
+      "-ldflags=-linkmode=internal",
     ],
   },
   "go.vetOnSave": "off",
   "go.formatTool": "goimports",
   "go.testFlags": [
     // "-race",
+    "-ldflags=-linkmode=internal",
     "-v",
     "-count=1",
     // "-tags=debug",

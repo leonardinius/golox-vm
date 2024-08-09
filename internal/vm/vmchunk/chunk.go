@@ -13,8 +13,8 @@ type Chunk struct {
 	Lines     Lines
 }
 
-func NewChunk() *Chunk {
-	chunk := new(Chunk) // TODO fix
+func NewChunk() Chunk {
+	chunk := Chunk{}
 	chunk.resetChunk()
 	return chunk
 }

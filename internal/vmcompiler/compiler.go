@@ -26,6 +26,7 @@ const (
 )
 
 type Compiler struct {
+	Chunk    vmchunk.Chunk
 	Function *vmvalue.ObjFunction
 	FnType   FunctionType
 
@@ -50,6 +51,7 @@ func (l *Local) SetName(name string) {
 func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) Compiler {
 	chunk := vmchunk.NewChunk()
 	compiler := Compiler{}
+	compiler.Chunk = chunk
 	compiler.FnType = fnType
 	compiler.Function = vmvalue.NewFunction(chunk.AsPtr(), chunk.Free)
 	compiler.Function.Name = fnName

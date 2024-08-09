@@ -46,7 +46,7 @@ var (
 )
 
 func TestSuite(t *testing.T) {
-	r := NewRunner(t, runModeExecutable)
+	r := NewRunner(t, runModeFnMain)
 	r.InitSuites()
 	r.RunAllSuites()
 }
