@@ -278,8 +278,9 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo
 			frame.IP -= int(offset)
 		case bytecode.OpCall:
 			argCount := readByte(frame, chunk)
-			ok = CallValue(Peek(argCount), argCount)
-			frame, chunk = frameChunk()
+			if ok = CallValue(Peek(argCount), argCount); ok {
+				frame, chunk = frameChunk()
+			}
 		case bytecode.OpClosure:
 			fn := vmvalue.ValueAsFunction(readConstant(frame, chunk))
 			closure := vmvalue.NewClosure(fn)

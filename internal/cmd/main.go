@@ -16,6 +16,7 @@ import (
 // It also initializes and frees the VM.
 func Main(args ...string) int {
 	vm.InitVM()
+	defer vm.FreeVM()
 
 	var err error
 	if len(args) == 0 {
@@ -27,8 +28,6 @@ func Main(args ...string) int {
 		fmt.Printf("Usage: %s [path]\n", filepath.Base(os.Args[0]))
 		return 64
 	}
-
-	vm.FreeVM()
 
 	if err == nil {
 		return 0
