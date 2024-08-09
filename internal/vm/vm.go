@@ -312,7 +312,7 @@ func isFalsey(value vmvalue.Value) bool {
 }
 
 func binaryNumOp(op func(vmvalue.Value, vmvalue.Value) vmvalue.Value) (ok bool) {
-	if ok = vmvalue.IsNumber(Peek(0)) && vmvalue.IsNumber(Peek(1)); !ok {
+	if ok = (vmvalue.IsNumber(Peek(0)) && vmvalue.IsNumber(Peek(1))); !ok {
 		runtimeError("Operands must be numbers.")
 		return ok
 	}

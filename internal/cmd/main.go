@@ -30,12 +30,20 @@ func Main(args ...string) int {
 
 	vm.FreeVM()
 
-	if err != nil {
+	if err == nil {
+		return 0
+	}
+
+	// interpreter reports errors to stderr
+	switch err {
+	case vm.InterpretRuntimeError:
+		return 70
+	case vm.InterpretCompileError:
+		return 65
+	default:
 		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
 		return 65
 	}
-
-	return 0
 }
 
 func repl(welcome string) error {
