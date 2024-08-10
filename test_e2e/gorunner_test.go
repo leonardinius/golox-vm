@@ -89,7 +89,6 @@ func (r *Runner) runSuites(names ...string) {
 	for _, name := range names {
 		suite := r.allSuites[name]
 		r.runSuite(suite)
-		r.t.Logf("Suite %s: Tests=%d, Passed=%d, Failed=%d, Skipped=%d, Expectations: %d", name, suite.tests, suite.passed, suite.failed, suite.skipped, suite.expectations)
 	}
 }
 
@@ -115,6 +114,10 @@ func (r *Runner) runSuite(suite *Suite) {
 	for _, file := range files {
 		r.runTest(suite, file)
 	}
+
+	r.t.Cleanup(func() {
+		r.t.Logf("Suite %s: Tests=%d, Passed=%d, Failed=%d, Skipped=%d, Expectations: %d", suite.name, suite.tests, suite.passed, suite.failed, suite.skipped, suite.expectations)
+	})
 }
 
 func (r *Runner) runTest(suite *Suite, path string) {
