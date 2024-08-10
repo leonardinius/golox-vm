@@ -131,6 +131,7 @@ func (r *Runner) runTest(suite *Suite, path string) {
 		test.t = t
 		suite.tests++
 		if !test.parse() {
+			r.t.Logf("Skipped [%s]/%s", suite.name, test.path)
 			suite.skipped++
 			return
 		}
@@ -486,11 +487,6 @@ func (r *Runner) InitSuites() {
 		"testdata/expressions": "skip",
 	}
 
-	// Go doesn't correctly implement IEEE equality on boxed doubles.
-	goNaNEquality := map[string]string{
-		// "testdata/number/nan_equality.lox": "skip",
-	}
-
 	goloxClassAttributesAccessErrors := map[string]string{
 		// "testdata/field/get_on_class.lox": "skip",
 		// "testdata/field/set_on_class.lox": "skip",
@@ -499,7 +495,6 @@ func (r *Runner) InitSuites() {
 	golox("golox-vm",
 		map[string]string{"testdata": "pass"},
 		earlyChapters,
-		goNaNEquality,
 		goloxClassAttributesAccessErrors,
 	)
 }
