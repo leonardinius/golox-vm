@@ -16,4 +16,3 @@ func Assertf(condition bool, message string, args ...any) {}
 func DisassembleChunk(chunk *vmchunk.Chunk, name string) {}
 
 func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) {}
-""
