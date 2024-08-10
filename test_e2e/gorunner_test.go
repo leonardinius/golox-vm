@@ -488,17 +488,6 @@ func (r *Runner) InitSuites() {
 		// "testdata/number/nan_equality.lox": "skip",
 	}
 
-	// No hardcoded limits.
-	noGoLimits := map[string]string{
-		// "testdata/limit/loop_too_large.lox":     "skip",
-		// "testdata/limit/no_reuse_constants.lox": "skip",
-		// "testdata/limit/too_many_constants.lox": "skip",
-		// "testdata/limit/too_many_locals.lox":    "skip",
-		// "testdata/limit/too_many_upvalues.lox":  "skip",
-		// // Rely on Go for stack overflow checking.
-		// "testdata/limit/stack_overflow.lox": "skip",
-	}
-
 	goloxClassAttributesAccessErrors := map[string]string{
 		// "testdata/field/get_on_class.lox": "skip",
 		// "testdata/field/set_on_class.lox": "skip",
@@ -508,7 +497,6 @@ func (r *Runner) InitSuites() {
 		map[string]string{"testdata": "pass"},
 		earlyChapters,
 		goNaNEquality,
-		noGoLimits,
 		goloxClassAttributesAccessErrors,
 	)
 }

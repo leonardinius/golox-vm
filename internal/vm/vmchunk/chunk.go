@@ -15,6 +15,7 @@ type Chunk struct {
 
 func NewChunk() Chunk {
 	chunk := Chunk{}
+	chunk.Constants = vmvalue.NewValueArray()
 	chunk.resetChunk()
 	return chunk
 }
@@ -46,7 +47,7 @@ func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {
 }
 
 func (chunk *Chunk) Write(op byte, line int) {
-	if cap(chunk.Code) < chunk.Count+1 {
+	if len(chunk.Code) < chunk.Count+1 {
 		capacity := vmmem.GrowCapacity(cap(chunk.Code))
 		chunk.Code = vmmem.GrowSlice(chunk.Code, capacity)
 	}

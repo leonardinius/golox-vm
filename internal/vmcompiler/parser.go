@@ -294,6 +294,7 @@ func synchronize() {
 		case tokens.TokenPrint:
 		case tokens.TokenReturn:
 			return
+		default: // Do nothing.
 		}
 
 		advance()
