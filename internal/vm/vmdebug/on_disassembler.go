@@ -9,18 +9,10 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
 )
 
-const (
-	DebugDisassembler = true
-)
-
 // Disassembler is an interface for disassembling chunks.
 type stdoutDisassembler struct{}
 
 var _ disassembler = (*stdoutDisassembler)(nil)
-
-func init() {
-	gDD = &stdoutDisassembler{}
-}
 
 // DisassembleChunk implements disassemblerMethods.
 func (s *stdoutDisassembler) DisassembleChunk(chunk *vmchunk.Chunk, name string) {

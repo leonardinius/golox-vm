@@ -18,6 +18,22 @@ const (
 	ObjTypeClosure
 )
 
+var gObjTypeStrings = map[ObjType]string{
+	ObjTypeString:   "OBJ_STRING",
+	ObjTypeFunction: "OBJ_FUNCTION",
+	ObjTypeNative:   "OBJ_NATIVE",
+	ObjTypeClosure:  "OBJ_CLOSURE",
+}
+
+// String implements fmt.Stringer.
+func (op ObjType) String() string {
+	if str, ok := gObjTypeStrings[op]; ok {
+		return str
+	}
+
+	panic(fmt.Sprintf("unknown object type: %d", op))
+}
+
 type VMObjectable interface {
 	Obj | ObjString | ObjFunction | ObjNative | ObjClosure
 }
@@ -120,6 +136,7 @@ func FreeObjects() {
 }
 
 func FreeObject(o *Obj) {
+	DebugFreeObject(o, "free")
 	switch o.Type {
 	case ObjTypeString:
 		v := castObject[ObjString](o)

@@ -4,10 +4,6 @@ package vmdebug
 
 import "fmt"
 
-const (
-	DebugAssert = true
-)
-
 type panicAssert struct{}
 
 var _ asserts = (*panicAssert)(nil)
@@ -17,8 +13,4 @@ func (s *panicAssert) Assertf(condition bool, message string, args ...any) {
 	if !condition {
 		panic(fmt.Errorf(message, args...))
 	}
-}
-
-func init() {
-	gAssert = &panicAssert{}
 }

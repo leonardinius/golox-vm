@@ -10,7 +10,11 @@ func PrintValue(v vmvalue.Value) {
 	switch {
 	case vmvalue.IsNumber(v):
 		fv := vmvalue.ValueAsNumber(v)
-		fmt.Printf("%v", fv)
+		if float64(int64(fv)) == fv {
+			fmt.Printf("%d", int(fv))
+		} else {
+			fmt.Printf("%f", fv)
+		}
 	case vmvalue.IsNil(v):
 		fmt.Print("nil")
 	case vmvalue.IsBool(v):

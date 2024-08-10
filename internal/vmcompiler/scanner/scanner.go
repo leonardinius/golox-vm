@@ -88,8 +88,12 @@ func (s *Scanner) ScanToken() Token {
 	return s.errorToken("Unexpected character.")
 }
 
+func (s *Scanner) isAtEndPeek(peek int) bool {
+	return s.current+peek >= len(s.source)
+}
+
 func (s *Scanner) isAtEnd() bool {
-	return s.current >= len(s.source)
+	return s.isAtEndPeek(0)
 }
 
 func (s *Scanner) advance() byte {
@@ -105,7 +109,7 @@ func (s *Scanner) peek() byte {
 }
 
 func (s *Scanner) peekNext() byte {
-	if s.isAtEnd() {
+	if s.isAtEndPeek(1) {
 		return 0
 	}
 	return s.source[s.current+1]

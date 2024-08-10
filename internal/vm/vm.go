@@ -22,9 +22,9 @@ const (
 )
 
 type CallFrame struct {
-	Closure *vmvalue.ObjClosure
-	IP      int
-	Slots   []vmvalue.Value
+	Closure  *vmvalue.ObjClosure
+	IP       int
+	SlotsTop int
 }
 
 // VM is the virtual machine.
@@ -102,7 +102,7 @@ func traceInstruction(frame *CallFrame, chunk *vmchunk.Chunk) {
 		fmt.Print("        ")
 		for i := range GlobalVM.StackTop {
 			fmt.Print("[ ")
-			vmdebug.PrintValue(GlobalVM.Stack[i])
+			vmdebug.PrintValue(StackAt(i))
 			fmt.Print(" ]")
 		}
 		fmt.Println()
@@ -124,6 +124,14 @@ func Peek(distance byte) vmvalue.Value {
 	return GlobalVM.Stack[GlobalVM.StackTop-1-int(distance)]
 }
 
+func StackAt(at int) vmvalue.Value {
+	return GlobalVM.Stack[at]
+}
+
+func SetStackAt(at int, v vmvalue.Value) {
+	GlobalVM.Stack[at] = v
+}
+
 func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 	if vmvalue.IsObj(callee) {
 		switch vmvalue.ObjTypeTag(callee) {
@@ -139,7 +147,7 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 			iArgs := int(argCount)
 			args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
 			value := native.Fn(args...)
-			GlobalVM.StackTop -= iArgs + 1
+			GlobalVM.StackTop -= (iArgs + 1)
 			Push(value)
 			return true
 		}
@@ -163,7 +171,7 @@ func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
 	GlobalVM.FrameCount++
 	frame.Closure = closure
 	frame.IP = 0
-	frame.Slots = GlobalVM.Stack[GlobalVM.StackTop-iArgs-1:]
+	frame.SlotsTop = GlobalVM.StackTop - iArgs - 1
 	return true
 }
 
@@ -244,10 +252,11 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo
 			PrintlnValue(Pop())
 		case bytecode.OpGetLocal:
 			slot := readByte(frame, chunk)
-			Push(frame.Slots[slot])
+			local := StackAt(frame.SlotsTop + int(slot))
+			Push(local)
 		case bytecode.OpSetLocal:
 			slot := readByte(frame, chunk)
-			frame.Slots[slot] = Peek(0)
+			SetStackAt(frame.SlotsTop+int(slot), Peek(0))
 		case bytecode.OpGetGlobal:
 			name := readString(frame, chunk)
 			if value, gok := GetGlobal(name); !gok {
@@ -292,7 +301,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo
 				Pop()
 				return callReturnValue, nil
 			}
-			GlobalVM.StackTop -= frame.Closure.Fn.Arity + 1
+			GlobalVM.StackTop = frame.SlotsTop
 			Push(callReturnValue)
 			frame, chunk = frameChunk()
 		default:
