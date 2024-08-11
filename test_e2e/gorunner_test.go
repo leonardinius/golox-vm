@@ -130,9 +130,10 @@ func (r *Runner) runTest(suite *Suite, path string) {
 	r.t.Run(suite.name+"/"+path, func(t *testing.T) {
 		test.t = t
 		suite.tests++
-		if !test.parse() {
+		if state, ok := test.parse(); !ok {
 			r.t.Logf("Skipped [%s]/%s", suite.name, test.path)
 			suite.skipped++
+			t.Skip(state)
 			return
 		}
 		suite.expectations += test.Expectations()
@@ -163,11 +164,10 @@ type Test struct {
 	failures             []string
 }
 
-func (t *Test) parse() bool {
+func (t *Test) parse() (state string, ok bool) {
 	// Get the path components.
 	parts := strings.Split(t.path, "/")
 	var subpath string
-	var state string
 
 	// Figure out the state of the test. We don't break out of this loop because
 	// we want lines for more specific paths to override more general ones.
@@ -184,7 +184,7 @@ func (t *Test) parse() bool {
 
 	require.NotEmptyf(t.t, state, "Unknown test state for '%s'", t.path)
 	if state == "skip" {
-		return false
+		return "skip", false
 	}
 
 	lines, err := os.ReadFile(filepath.Join(testDir, "..", t.path))
@@ -194,7 +194,7 @@ func (t *Test) parse() bool {
 		lineNum++
 
 		if nonTestPattern.MatchString(line) {
-			return false
+			return "nontest", false
 		}
 
 		match := expectedOutputPattern.FindStringSubmatch(line)
@@ -231,11 +231,11 @@ func (t *Test) parse() bool {
 	}
 
 	if len(t.expectedErrors) > 0 && t.expectedRuntimeError != "" {
-		require.Fail(t.t, "parse", "TEST ERROR %s\nCannot expect both compile and runtime errors.", t.path)
-		return false
+		t.t.Logf("TEST ERROR %s\nCannot expect both compile and runtime errors.", t.path)
+		return "asserts", false
 	}
 
-	return true
+	return "", true
 }
 
 func (t *Test) run(mode runMode) []string {

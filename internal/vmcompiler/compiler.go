@@ -187,7 +187,7 @@ func endScope() {
 
 	for gCurrent.LocalCount > 0 {
 		local := &gCurrent.Locals[gCurrent.LocalCount-1]
-		if gCurrent.ScoreDepth < local.Depth {
+		if local.Depth <= gCurrent.ScoreDepth {
 			break
 		}
 		if local.IsCaptured {
