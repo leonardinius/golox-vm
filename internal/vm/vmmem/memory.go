@@ -37,21 +37,3 @@ func AllocateSlice[E any](size int) []E {
 	var slice []E
 	return ReallocateSlice(slice, 0, size)
 }
-
-// func CMalloc(length int) unsafe.Pointer {
-// 	// force C compiler to allocate memory
-// 	return C.malloc(C.ulong(length))
-// }
-
-// func CFree[T any](ptr *T) {
-// 	C.free(unsafe.Pointer(ptr))
-// }
-
-// func CMallocBytes(length int) []byte {
-// 	return unsafe.Slice((*byte)(CMalloc(length)), length)
-// }
-
-// func CFreeBytes(bytes []byte) {
-// 	// force C compiler to free memory
-// 	CFree(unsafe.SliceData(bytes))
-// }

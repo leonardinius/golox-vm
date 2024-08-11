@@ -16,6 +16,7 @@ const (
 	ObjTypeFunction
 	ObjTypeNative
 	ObjTypeClosure
+	ObjTypeUpvalue
 )
 
 var gObjTypeStrings = map[ObjType]string{
@@ -35,7 +36,7 @@ func (op ObjType) String() string {
 }
 
 type VMObjectable interface {
-	Obj | ObjString | ObjFunction | ObjNative | ObjClosure
+	Obj | ObjString | ObjFunction | ObjNative | ObjClosure | ObjUpvalue
 }
 
 type vmGc interface {
@@ -48,6 +49,7 @@ var (
 	_ vmGc = (*ObjFunction)(nil)
 	_ vmGc = (*ObjNative)(nil)
 	_ vmGc = (*ObjClosure)(nil)
+	_ vmGc = (*ObjUpvalue)(nil)
 )
 
 type Obj struct {
@@ -57,7 +59,7 @@ type Obj struct {
 
 // gc implements vmGc.
 func (o *Obj) gc() {
-	panic(fmt.Sprintf("unable to free object of type %d", o.Type))
+	// TODO: vmmeory GC tracking
 }
 
 type ObjFunction struct {
@@ -70,7 +72,6 @@ type ObjFunction struct {
 }
 
 // gc implements vmGc.
-// Subtle: this method shadows the method (Obj).gc of ObjFunction.Obj.
 func (o *ObjFunction) gc() {
 	o.FreeChunkFn()
 }
@@ -84,18 +85,27 @@ type ObjNative struct {
 }
 
 // gc implements vmGc.
-// Subtle: this method shadows the method (Obj).gc of ObjNative.Obj.
 func (o *ObjNative) gc() {
 }
 
 type ObjClosure struct {
 	Obj
-	Fn *ObjFunction
+	Fn       *ObjFunction
+	Upvalues []*ObjUpvalue
 }
 
 // gc implements vmGc.
-// Subtle: this method shadows the method (Obj).gc of ObjClosure.Obj.
 func (o *ObjClosure) gc() {
+	o.Upvalues = vmmem.FreeSlice(o.Upvalues)
+}
+
+type ObjUpvalue struct {
+	Obj
+	Location *Value
+}
+
+// gc implements vmGc.
+func (o *ObjUpvalue) gc() {
 }
 
 type ObjString struct {
@@ -105,7 +115,6 @@ type ObjString struct {
 }
 
 // gc implements vmGc.
-// Subtle: this method shadows the method (Obj).gc of ObjString.Obj.
 func (o *ObjString) gc() {
 	o.Chars = vmmem.FreeSlice(o.Chars)
 }
@@ -120,7 +129,7 @@ func castObject[T VMObjectable](o *Obj) *T {
 }
 
 func allocateObject[T VMObjectable](objType ObjType) *T {
-	o := new(T)
+	o := new(T)                         // TODO: vmmeory GC tracking
 	object := (*Obj)(unsafe.Pointer(o)) //nolint:gosec
 	object.Type = objType
 	object.Next = GRoots
@@ -151,16 +160,21 @@ func FreeObject(o *Obj) {
 	case ObjTypeClosure:
 		v := castObject[ObjClosure](o)
 		v.gc()
-	default:
-		o.gc()
+	case ObjTypeUpvalue:
+		v := castObject[ObjUpvalue](o)
+		v.gc()
 	}
+
+	// call shared GC part
+	// TODO: vmmeory GC tracking
+	o.gc()
 }
 
 func NewTakeString(chars []byte, hash uint64) *ObjString {
-	value := allocateObject[ObjString](ObjTypeString)
-	value.Chars = chars
-	value.Hash = hash
-	return value
+	obj := allocateObject[ObjString](ObjTypeString)
+	obj.Chars = chars
+	obj.Hash = hash
+	return obj
 }
 
 func NewCopyString(chars []byte, hash uint64) *ObjString {
@@ -170,26 +184,33 @@ func NewCopyString(chars []byte, hash uint64) *ObjString {
 }
 
 func NewFunction(chunk any, freeChunkFn func()) *ObjFunction {
-	value := allocateObject[ObjFunction](ObjTypeFunction)
-	value.Chunk = chunk
-	value.FreeChunkFn = freeChunkFn
-	value.Arity = 0
-	value.UpvalueCount = 0
-	value.Name = nil
-	return value
+	obj := allocateObject[ObjFunction](ObjTypeFunction)
+	obj.Chunk = chunk
+	obj.FreeChunkFn = freeChunkFn
+	obj.Arity = 0
+	obj.UpvalueCount = 0
+	obj.Name = nil
+	return obj
 }
 
 func NewNativeFunction(fn NativeFn, arity byte) *ObjNative {
-	value := allocateObject[ObjNative](ObjTypeNative)
-	value.Fn = fn
-	value.Arity = arity
-	return value
+	obj := allocateObject[ObjNative](ObjTypeNative)
+	obj.Fn = fn
+	obj.Arity = arity
+	return obj
 }
 
 func NewClosure(fn *ObjFunction) *ObjClosure {
-	value := allocateObject[ObjClosure](ObjTypeClosure)
-	value.Fn = fn
-	return value
+	obj := allocateObject[ObjClosure](ObjTypeClosure)
+	obj.Fn = fn
+	obj.Upvalues = vmmem.AllocateSlice[*ObjUpvalue](fn.UpvalueCount)
+	return obj
+}
+
+func NewUpvalue(slot *Value) *ObjUpvalue {
+	obj := allocateObject[ObjUpvalue](ObjTypeUpvalue)
+	obj.Location = slot
+	return obj
 }
 
 func PrintObject(obj *Obj) {
@@ -205,6 +226,8 @@ func PrintObject(obj *Obj) {
 	case ObjTypeClosure:
 		v := castObject[ObjClosure](obj)
 		printFunction(v.Fn)
+	case ObjTypeUpvalue:
+		fmt.Print("upvalue")
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}

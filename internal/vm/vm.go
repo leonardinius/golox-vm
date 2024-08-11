@@ -156,6 +156,11 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 	return runtimeError("Can only call functions and classes.")
 }
 
+func CaptureUpvalue(at int) *vmvalue.ObjUpvalue {
+	valuePtr := &GlobalVM.Stack[at]
+	return vmvalue.NewUpvalue(valuePtr)
+}
+
 func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
 	iArgs := int(argCount)
 	if iArgs != closure.Fn.Arity {
@@ -294,6 +299,22 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo
 			fn := vmvalue.ValueAsFunction(readConstant(frame, chunk))
 			closure := vmvalue.NewClosure(fn)
 			Push(vmvalue.ObjAsValue(closure))
+
+			for i := range closure.Upvalues {
+				islocal := readByte(frame, chunk)
+				index := readByte(frame, chunk)
+				if islocal != 0 {
+					closure.Upvalues[i] = CaptureUpvalue(frame.SlotsTop + int(index))
+				} else {
+					closure.Upvalues[i] = frame.Closure.Upvalues[index]
+				}
+			}
+		case bytecode.OpGetUpvalue:
+			slot := readByte(frame, chunk)
+			Push(*frame.Closure.Upvalues[slot].Location)
+		case bytecode.OpSetUpvalue:
+			slot := readByte(frame, chunk)
+			*frame.Closure.Upvalues[slot].Location = Peek(0)
 		case bytecode.OpReturn:
 			callReturnValue := Pop()
 			GlobalVM.FrameCount--
