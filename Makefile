@@ -24,6 +24,7 @@ MAKEFLAGS 		+= --no-builtin-rules
 MAKEFLAGS		+= --no-print-directory
 GOPATH			?= ${shell go env GOPATH}
 export GOBIN 	:= $(abspath $(BIN))
+export GOFLAGS 	:= -ldflags=-linkmode=internal
 # ARGS etc ...
 ARGS 			:=
 
@@ -44,7 +45,7 @@ help: ## Display this help
 
 ##@: Build/Run
 
-all: clean go/tidy go/format test lint release debug  ## ALL, builds the world
+all: clean go/tidy go/format test test_e2e lint release debug  ## ALL, builds the world
 
 .PHONY: clean
 clean: ## Clean-up build artifacts
@@ -53,7 +54,10 @@ clean: ## Clean-up build artifacts
 	@rm -rf ${BUILDOUT}
 
 .PHONY: test
-test: clean go/test go/test_e2e ## Runs all tests
+test: clean go/test ## Runs all tests
+
+.PHONY: test_e2e
+test_e2e: clean go/test_e2e ## Runs all e2e tests
 
 .PHONY: lint
 lint: go/lint ## Runs all linters

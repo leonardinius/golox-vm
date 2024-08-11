@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	GRoots (*Obj)
-	gSeed  maphash.Seed
+	GRoots *Obj         = nil
+	gSeed  maphash.Seed = maphash.MakeSeed()
 )
 
 type ObjType byte
