@@ -82,15 +82,22 @@ func BoolAsValue(b bool) Value {
 }
 
 func ObjAsValue[T VMObjectable](v *T) Value {
-	ptr := uintptr(unsafe.Pointer(v)) //nolint:gosec // unsafe.Pointer is used here
+	ptr := uintptr(unsafe.Pointer(v)) //nolint:gosec
 	return Value(SignBit | QNAN | uint64(ptr))
 }
 
 func valueAsObj[T VMObjectable](v Value) *T {
-	addr := (uint64(v) & ^(SignBit | QNAN))
-	ptr := uintptr(addr)
-	uptr := (**T)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
-	return *uptr
+	addr := uintptr((uint64(v) & ^(SignBit | QNAN)))
+	ptr := *(*unsafe.Pointer)(unsafe.Pointer(&addr)) //nolint:gosec
+	return (*T)(ptr)
+}
+
+func valuePtrAsUintPtr(v *Value) uintptr {
+	return uintptr(unsafe.Pointer(v)) //nolint:gosec
+}
+
+func UPtrFromValue(value *Value) uintptr {
+	return valuePtrAsUintPtr(value)
 }
 
 func ValueAsObj(v Value) *Obj {
@@ -117,6 +124,10 @@ func IsNativeFn(v Value) bool {
 	return isObjType(v, ObjTypeNative)
 }
 
+func IsClosure(v Value) bool {
+	return isObjType(v, ObjTypeClosure)
+}
+
 func ValueAsString(v Value) *ObjString {
 	return valueAsObj[ObjString](v)
 }
@@ -131,4 +142,8 @@ func ValueAsFunction(v Value) *ObjFunction {
 
 func ValueAsNativeFn(v Value) *ObjNative {
 	return valueAsObj[ObjNative](v)
+}
+
+func ValueAsClosure(v Value) *ObjClosure {
+	return valueAsObj[ObjClosure](v)
 }

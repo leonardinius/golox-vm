@@ -22,6 +22,8 @@ linters-settings:
       - performance
       - style
       - experimental
+    disabled-checks:
+      - whyNoLint
   revive:
     ignore-generated-header: true
     severity: warning

@@ -13,8 +13,10 @@ const (
 	OpPop
 	OpGetLocal
 	OpSetLocal
-	OpGetGlobal
+	OpGetUpvalue
+	OpSetUpvalue
 	OpDefineGlobal
+	OpGetGlobal
 	OpSetGlobal
 	OpEqual
 	OpGreater
@@ -30,6 +32,8 @@ const (
 	OpJumpIfFalse
 	OpLoop
 	OpCall
+	OpClosure
+	OpCloseUpvalue
 	OpReturn
 )
 
@@ -44,9 +48,11 @@ var gOpCodeStrings = map[OpCode]string{
 	OpPop:          "OP_POP",
 	OpGetLocal:     "OP_GET_LOCAL",
 	OpSetLocal:     "OP_SET_LOCAL",
+	OpGetUpvalue:   "OP_GET_UPVALUE",
+	OpSetUpvalue:   "OP_SET_UPVALUE",
 	OpGetGlobal:    "OP_GET_GLOBAL",
-	OpDefineGlobal: "OP_DEFINE_GLOBAL",
 	OpSetGlobal:    "OP_SET_GLOBAL",
+	OpDefineGlobal: "OP_DEFINE_GLOBAL",
 	OpAdd:          "OP_ADD",
 	OpSubtract:     "OP_SUBTRACT",
 	OpMultiply:     "OP_MULTIPLY",
@@ -58,6 +64,8 @@ var gOpCodeStrings = map[OpCode]string{
 	OpJumpIfFalse:  "OP_JUMP_IF_FALSE",
 	OpLoop:         "OP_LOOP",
 	OpCall:         "OP_CALL",
+	OpClosure:      "OP_CLOSURE",
+	OpCloseUpvalue: "OP_CLOSE_UPVALUE",
 	OpReturn:       "OP_RETURN",
 }
 

@@ -1,8 +1,9 @@
 package hashtable
 
 import (
-	"slices"
+	"bytes"
 
+	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
@@ -31,7 +32,7 @@ func (h *Table) reset() {
 }
 
 func (h *Table) Free() {
-	h.entries = vmmem.FreeArray(h.entries)
+	h.entries = vmmem.FreeSlice(h.entries)
 	h.reset()
 }
 
@@ -65,7 +66,9 @@ func (h *Table) Set(
 
 func (h *Table) findEntry(entries []entry, key *vmvalue.ObjString) *entry {
 	capacity := uint64(len(entries))
-	index := key.Hash % capacity
+	vmdebug.Assertf(capacity%2 == 0, "capacity must be greater than 0 (%d)", capacity)
+	mask := capacity - 1
+	index := key.Hash & mask
 	var tombstone *entry = nil
 	for {
 		el := &entries[index]
@@ -81,12 +84,12 @@ func (h *Table) findEntry(entries []entry, key *vmvalue.ObjString) *entry {
 		} else if el.key == key {
 			return el
 		}
-		index = (index + 1) % capacity
+		index = (index + 1) & mask
 	}
 }
 
 func (h *Table) adjustCapacity(capacity int) {
-	entries := vmmem.GrowArray(h.entries, capacity)
+	entries := vmmem.GrowSlice(h.entries, capacity)
 	for i := range entries {
 		el := &entries[i]
 		el.key = nil
@@ -106,7 +109,7 @@ func (h *Table) adjustCapacity(capacity int) {
 		h.count++
 	}
 
-	h.entries = vmmem.FreeArray(h.entries)
+	h.entries = vmmem.FreeSlice(h.entries)
 	h.entries = entries
 }
 
@@ -153,14 +156,17 @@ func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 	}
 
 	capacity := uint64(len(h.entries))
-	index := hash % capacity
+	vmdebug.Assertf(capacity%2 == 0, "capacity must be greater than 0 (%d)", capacity)
+	mask := capacity - 1
+	index := hash & mask
 	for {
 		el := &h.entries[index]
+
 		if el.key == nil && vmvalue.IsNil(el.value) {
 			return nil
-		} else if hash == el.key.Hash && slices.Equal(chars, el.key.Chars) {
+		} else if hash == el.key.Hash && bytes.Equal(chars, el.key.Chars) {
 			return el.key
 		}
-		index = (index + 1) % capacity
+		index = (index + 1) & mask
 	}
 }

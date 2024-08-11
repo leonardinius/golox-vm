@@ -1,8 +1,6 @@
 package vmchunk
 
 import (
-	"unsafe"
-
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
@@ -17,13 +15,13 @@ type Chunk struct {
 
 func NewChunk() Chunk {
 	chunk := Chunk{}
+	chunk.Constants = vmvalue.NewValueArray()
 	chunk.resetChunk()
 	return chunk
 }
 
-func FromUintPtr(ptr uintptr) *Chunk {
-	ch := (**Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
-	return *ch
+func FromPtr(ptr any) *Chunk {
+	return ptr.(*Chunk)
 }
 
 func (chunk *Chunk) resetChunk() {
@@ -34,14 +32,14 @@ func (chunk *Chunk) resetChunk() {
 }
 
 func (chunk *Chunk) Free() {
-	chunk.Code = vmmem.FreeArray(chunk.Code)
+	chunk.Code = vmmem.FreeSlice(chunk.Code)
 	chunk.Constants.Free()
 	chunk.Lines.Free()
 	chunk.resetChunk()
 }
 
-func (chunk *Chunk) AsPtr() uintptr {
-	return uintptr(unsafe.Pointer(chunk)) //nolint:gosec // this is a pointer
+func (chunk *Chunk) AsPtr() any {
+	return any(chunk)
 }
 
 func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {
@@ -49,10 +47,9 @@ func (chunk *Chunk) WriteOpcode(op bytecode.OpCode, line int) {
 }
 
 func (chunk *Chunk) Write(op byte, line int) {
-	chunk.Code = append(chunk.Code, op)
-	if cap(chunk.Code) < chunk.Count+1 {
+	if len(chunk.Code) < chunk.Count+1 {
 		capacity := vmmem.GrowCapacity(cap(chunk.Code))
-		chunk.Code = vmmem.GrowArray(chunk.Code, capacity)
+		chunk.Code = vmmem.GrowSlice(chunk.Code, capacity)
 	}
 	chunk.Code[chunk.Count] = op
 	chunk.Lines.MustWriteOffset(chunk.Count, line)

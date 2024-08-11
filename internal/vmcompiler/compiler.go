@@ -2,18 +2,19 @@ package vmcompiler
 
 import (
 	"math"
-	"unsafe"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
 )
 
 const (
-	MaxConstantCount = math.MaxUint8
+	MaxConstantCount = math.MaxUint8 + 1
 	MaxLocalCount    = math.MaxUint8 + 1
+	MaxUpvalueCount  = math.MaxUint8 + 1
 	MaxJump          = math.MaxUint16
 )
 
@@ -26,6 +27,7 @@ const (
 )
 
 type Compiler struct {
+	Chunk    vmchunk.Chunk
 	Function *vmvalue.ObjFunction
 	FnType   FunctionType
 
@@ -33,12 +35,15 @@ type Compiler struct {
 	LocalCount int
 	ScoreDepth int
 
+	Upvalues [MaxUpvalueCount]Upvalue
+
 	Enclosing *Compiler
 }
 
 type Local struct {
-	Name  scanner.Token
-	Depth int
+	Name       scanner.Token
+	Depth      int
+	IsCaptured bool
 }
 
 func (l *Local) SetName(name string) {
@@ -47,21 +52,27 @@ func (l *Local) SetName(name string) {
 	l.Name.Length = len(l.Name.Source)
 }
 
-func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) Compiler {
+type Upvalue struct {
+	Index int
+	Local byte
+}
+
+func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) *Compiler {
 	chunk := vmchunk.NewChunk()
 	compiler := Compiler{}
+	compiler.Chunk = chunk
 	compiler.FnType = fnType
-	compiler.Function = vmvalue.NewFunction(chunk.AsPtr())
-	compiler.Function.FreeChunkFn = chunk.Free
+	compiler.Function = vmvalue.NewFunction(chunk.AsPtr(), chunk.Free)
 	compiler.Function.Name = fnName
 	compiler.Enclosing = gCurrent
 	gCurrent = &compiler
 
-	local := &gCurrent.Locals[gCurrent.LocalCount]
-	gCurrent.LocalCount++
+	local := &compiler.Locals[compiler.LocalCount]
+	compiler.LocalCount++
 	local.Depth = 0
 	local.SetName("")
-	return compiler
+	local.IsCaptured = false
+	return &compiler
 }
 
 func Compile(source []byte) (*vmvalue.ObjFunction, bool) {
@@ -82,9 +93,7 @@ func Compile(source []byte) (*vmvalue.ObjFunction, bool) {
 }
 
 func currentChunk() *vmchunk.Chunk {
-	ptr := gCurrent.Function.ChunkPtr
-	ch := (**vmchunk.Chunk)(unsafe.Pointer(&ptr)) //nolint:gosec // unsafe.Pointer is used here
-	return *ch
+	return vmchunk.FromPtr(gCurrent.Function.Chunk)
 }
 
 func emitOpcode(op bytecode.OpCode) {
@@ -96,7 +105,11 @@ func emitOpcodes(op1, op2 bytecode.OpCode) {
 	emitOpcode(op2)
 }
 
-func emitBytes(op bytecode.OpCode, b byte) {
+func emitByte(b byte) {
+	currentChunk().Write(b, gParser.previous.Line)
+}
+
+func emitOpByte(op bytecode.OpCode, b byte) {
 	currentChunk().WriteOpcode(op, gParser.previous.Line)
 	currentChunk().Write(b, gParser.previous.Line)
 }
@@ -123,7 +136,7 @@ func emitLoop(loopStart int) {
 }
 
 func emitConstant(v vmvalue.Value) {
-	emitBytes(bytecode.OpConstant, makeConstant(v))
+	emitOpByte(bytecode.OpConstant, byte(makeConstant(v)))
 }
 
 func patchJump(offset int) {
@@ -141,13 +154,13 @@ func patchJump(offset int) {
 	currentChunk().Code[offset+1] = b2
 }
 
-func makeConstant(v vmvalue.Value) byte {
+func makeConstant(v vmvalue.Value) int {
 	constant := currentChunk().AddConstant(v)
-	if constant > MaxConstantCount {
+	if constant >= MaxConstantCount {
 		errorAtPrev("Too many constants in one chunk.")
 		return 0
 	}
-	return byte(constant)
+	return constant
 }
 
 func emitReturn() {
@@ -159,6 +172,9 @@ func endCompiler() *vmvalue.ObjFunction {
 	emitReturn()
 	fn := gCurrent.Function
 	gCurrent = gCurrent.Enclosing
+	if vmdebug.DebugDisassembler && !gParser.hadError {
+		disassembleFunction(fn)
+	}
 	return fn
 }
 
@@ -169,9 +185,25 @@ func beginScope() {
 func endScope() {
 	gCurrent.ScoreDepth--
 
-	for gCurrent.LocalCount > 0 &&
-		gCurrent.Locals[gCurrent.LocalCount-1].Depth > gCurrent.ScoreDepth {
-		emitOpcode(bytecode.OpPop)
+	for gCurrent.LocalCount > 0 {
+		local := &gCurrent.Locals[gCurrent.LocalCount-1]
+		if gCurrent.ScoreDepth < local.Depth {
+			break
+		}
+		if local.IsCaptured {
+			emitOpcode(bytecode.OpCloseUpvalue)
+		} else {
+			emitOpcode(bytecode.OpPop)
+		}
 		gCurrent.LocalCount--
 	}
+}
+
+func disassembleFunction(fn *vmvalue.ObjFunction) {
+	fnName := "<script>"
+	if fn.Name != nil {
+		fnName = string(fn.Name.Chars)
+	}
+	chunk := vmchunk.FromPtr(fn.Chunk)
+	vmdebug.DisassembleChunk(chunk, fnName)
 }

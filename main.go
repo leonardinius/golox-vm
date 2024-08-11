@@ -4,72 +4,57 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 
-	"github.com/chzyer/readline"
-
-	"github.com/leonardinius/goloxvm/internal/vm"
+	"github.com/leonardinius/goloxvm/internal/cmd"
+	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 )
 
 func main() {
-	args := os.Args[1:]
-	vm.InitVM()
-
-	var err error
-	if len(args) == 0 {
-		fmt.Println("Welcome to the GoLox-VM REPL!")
-		err = repl("repl")
-	} else if len(args) == 1 {
-		err = runFile(args[0])
-	} else {
-		fmt.Printf("Usage: %s [path]\n", filepath.Base(os.Args[0]))
-		os.Exit(64)
-	}
-
-	vm.FreeVM()
-
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(65)
-	}
-
-	os.Exit(0)
+	os.Exit(mainCli(os.Args[1:]...))
 }
 
-func repl(welcome string) error {
-	rl, err := readline.New(welcome + "> ")
-	if err != nil {
-		return err
-	}
-	defer ioClose(rl)
+func mainCli(args ...string) int {
+	cfgPproff := vmdebug.LoadPprofConfigFromEnv()
 
-	for {
-		line, err := rl.ReadSlice()
+	if cfgPproff.On && cfgPproff.CPUProfile != "" {
+		f, err := os.Create(cfgPproff.CPUProfile)
 		if err != nil {
-			return err
+			fmt.Fprintf(os.Stderr, "[ERROR] could not create CPU profile: %#v", err)
+			return 1
 		}
-
-		if value, err := vm.Interpret(line); err == nil {
-			vm.PrintlnValue(value)
+		defer ioClose(f)
+		if err := pprof.StartCPUProfile(f); err != nil {
+			ioClose(f)
+			fmt.Fprintf(os.Stderr, "[ERROR] could not start CPU profile: %#v", err)
+			return 1
 		}
-		// else {
-		// Do nothing
-		// interpreter reports errors to stderr
-		// fmt.Println(err)
-		//}
+		defer pprof.StopCPUProfile()
 	}
-}
 
-func runFile(script string) error {
-	data, err := os.ReadFile(script) //nolint:gosec // get the data
-	if err == nil {
-		_, err = vm.Interpret(data)
+	code := cmd.Main(args...)
+
+	if cfgPproff.On && cfgPproff.MemProfile != "" {
+		f, err := os.Create(cfgPproff.MemProfile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "[ERROR] could not create memory profile: %#v", err)
+			return code
+		}
+		defer ioClose(f)
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			ioClose(f)
+			fmt.Fprintf(os.Stderr, "[ERROR] could not write memory profile: %#v", err)
+			return code
+		}
 	}
-	return err
+
+	return code
 }
 
 func ioClose(c io.Closer) {
 	if err := c.Close(); err != nil {
-		fmt.Printf("[WARN] close: %s\n", err)
+		fmt.Fprintf(os.Stderr, "[WARN ] close: %s\n", err)
 	}
 }

@@ -10,7 +10,7 @@ import (
 
 func TestGrowArrayShouldGrowCapacity(t *testing.T) {
 	a := make([]int, 0)
-	a = vmmem.GrowArray(a, 10)
+	a = vmmem.GrowSlice(a, 10)
 	assert.Len(t, a, 10)
 	assert.GreaterOrEqual(t, 10, cap(a))
 }

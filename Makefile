@@ -24,6 +24,7 @@ MAKEFLAGS 		+= --no-builtin-rules
 MAKEFLAGS		+= --no-print-directory
 GOPATH			?= ${shell go env GOPATH}
 export GOBIN 	:= $(abspath $(BIN))
+export GOFLAGS 	:= -ldflags=-linkmode=internal
 # ARGS etc ...
 ARGS 			:=
 
@@ -44,7 +45,7 @@ help: ## Display this help
 
 ##@: Build/Run
 
-all: clean go/tidy go/format test lint release debug  ## ALL, builds the world
+all: clean go/tidy go/format test test_e2e lint release debug  ## ALL, builds the world
 
 .PHONY: clean
 clean: ## Clean-up build artifacts
@@ -54,6 +55,9 @@ clean: ## Clean-up build artifacts
 
 .PHONY: test
 test: clean go/test ## Runs all tests
+
+.PHONY: test_e2e
+test_e2e: clean go/test_e2e ## Runs all e2e tests
 
 .PHONY: lint
 lint: go/lint ## Runs all linters
@@ -72,7 +76,7 @@ run: ## Runs golox-vm. Use 'make ARGS="script.lox" run' to pass arguments
 .PHONY: rund
 rund: ## Runs goloxd-vm. Use 'make ARGS="script.lox" run' to pass arguments
 	@echo -e "$(CYAN)--- run ...$(CLEAR)"
-	go run -tags debug ./main.go $(ARGS)
+	go run -race -tags debug ./main.go $(ARGS)
 
 ###@: Go
 .PHONY: go/format
@@ -90,9 +94,14 @@ go/lint: $(BIN)/golangci-lint ### Lints the codebase using golangci-lint
 	$(BIN)/golangci-lint run --modules-download-mode=readonly --config .golangci.yml
 
 .PHONY: go/test
-go/test: $(BIN)/gotestsum ### Runs all tests
+go/test: $(BIN)/gotestsum ### Runs unit tests
 	@echo -e "$(CYAN)--- go test ...$(CLEAR)"
-	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./...
+	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./internal/...
+
+.PHONY: go/test_e2e
+go/test_e2e: $(BIN)/gotestsum ### Runs e2e tests
+	@echo -e "$(CYAN)--- go test e2e ...$(CLEAR)"
+	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./test_e2e/...
 
 .PHONY: go/release
 go/release: ### Build

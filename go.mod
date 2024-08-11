@@ -1,6 +1,6 @@
 module github.com/leonardinius/goloxvm
 
-go 1.22.3
+go 1.22.6
 
 require (
 	github.com/chzyer/readline v1.5.1

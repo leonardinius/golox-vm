@@ -3,6 +3,7 @@ package scanner_test
 import (
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -22,6 +23,7 @@ func TestScanner(t *testing.T) {
 			outputs := []string{}
 			for {
 				token := s.ScanToken()
+				runtime.GC()
 				if token.Type == tokens.TokenEOF {
 					break
 				}
