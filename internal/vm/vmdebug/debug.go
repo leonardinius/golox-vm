@@ -7,6 +7,7 @@ import (
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
 const (
@@ -43,11 +44,14 @@ func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 	case bytecode.OpConstant,
 		bytecode.OpGetGlobal,
 		bytecode.OpSetGlobal,
-		bytecode.OpDefineGlobal,
-		bytecode.OpClosure:
+		bytecode.OpDefineGlobal:
 		return constantInstruction(instruction, chunk, offset)
+	case bytecode.OpClosure:
+		return closureInstruction(instruction, chunk, offset)
 	case bytecode.OpGetLocal,
 		bytecode.OpSetLocal,
+		bytecode.OpGetUpvalue,
+		bytecode.OpSetUpvalue,
 		bytecode.OpCall:
 		return byteInstruction(instruction, chunk, offset)
 	case bytecode.OpJump,
@@ -82,6 +86,31 @@ func constantInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) i
 	PrintValue(chunk.ConstantAt(int(constant)))
 	fmt.Println("'")
 	return offset + 2
+}
+
+func closureInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {
+	constant := chunk.Code[offset+1]
+	value := chunk.ConstantAt(int(constant))
+	fmt.Printf("%-16s %4d '", op, constant)
+	PrintValue(value)
+	fmt.Println("'")
+	offset += 2
+
+	fn := vmvalue.ValueAsFunction(value)
+	for range fn.UpvalueCount {
+		var tag string
+		isLocal := chunk.Code[offset] == 1
+		index := chunk.Code[offset+1]
+		if isLocal {
+			tag = "local"
+		} else {
+			tag = "upvalue"
+		}
+		fmt.Printf("%04d    | %-20s   %s %d\n", offset, "", tag, index)
+		offset += 2
+	}
+
+	return offset
 }
 
 func byteInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {

@@ -62,10 +62,11 @@ func (o *Obj) gc() {
 
 type ObjFunction struct {
 	Obj
-	Arity       int
-	Chunk       any
-	FreeChunkFn func()
-	Name        *ObjString
+	Arity        int
+	Chunk        any
+	FreeChunkFn  func()
+	UpvalueCount int
+	Name         *ObjString
 }
 
 // gc implements vmGc.
@@ -170,10 +171,11 @@ func NewCopyString(chars []byte, hash uint64) *ObjString {
 
 func NewFunction(chunk any, freeChunkFn func()) *ObjFunction {
 	value := allocateObject[ObjFunction](ObjTypeFunction)
-	value.Arity = 0
-	value.Name = nil
 	value.Chunk = chunk
 	value.FreeChunkFn = freeChunkFn
+	value.Arity = 0
+	value.UpvalueCount = 0
+	value.Name = nil
 	return value
 }
 

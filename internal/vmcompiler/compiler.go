@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	MaxConstantCount = math.MaxUint8
+	MaxConstantCount = math.MaxUint8 + 1
 	MaxLocalCount    = math.MaxUint8 + 1
+	MaxUpvalueCount  = math.MaxUint8 + 1
 	MaxJump          = math.MaxUint16
 )
 
@@ -34,6 +35,8 @@ type Compiler struct {
 	LocalCount int
 	ScoreDepth int
 
+	Upvalues [MaxUpvalueCount]Upvalue
+
 	Enclosing *Compiler
 }
 
@@ -48,7 +51,12 @@ func (l *Local) SetName(name string) {
 	l.Name.Length = len(l.Name.Source)
 }
 
-func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) Compiler {
+type Upvalue struct {
+	Index int
+	Local byte
+}
+
+func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) *Compiler {
 	chunk := vmchunk.NewChunk()
 	compiler := Compiler{}
 	compiler.Chunk = chunk
@@ -58,11 +66,11 @@ func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) Compiler {
 	compiler.Enclosing = gCurrent
 	gCurrent = &compiler
 
-	local := &gCurrent.Locals[gCurrent.LocalCount]
-	gCurrent.LocalCount++
+	local := &compiler.Locals[compiler.LocalCount]
+	compiler.LocalCount++
 	local.Depth = 0
 	local.SetName("")
-	return compiler
+	return &compiler
 }
 
 func Compile(source []byte) (*vmvalue.ObjFunction, bool) {
@@ -95,7 +103,11 @@ func emitOpcodes(op1, op2 bytecode.OpCode) {
 	emitOpcode(op2)
 }
 
-func emitBytes(op bytecode.OpCode, b byte) {
+func emitByte(b byte) {
+	currentChunk().Write(b, gParser.previous.Line)
+}
+
+func emitOpByte(op bytecode.OpCode, b byte) {
 	currentChunk().WriteOpcode(op, gParser.previous.Line)
 	currentChunk().Write(b, gParser.previous.Line)
 }
@@ -122,7 +134,7 @@ func emitLoop(loopStart int) {
 }
 
 func emitConstant(v vmvalue.Value) {
-	emitBytes(bytecode.OpConstant, makeConstant(v))
+	emitOpByte(bytecode.OpConstant, byte(makeConstant(v)))
 }
 
 func patchJump(offset int) {
@@ -140,13 +152,13 @@ func patchJump(offset int) {
 	currentChunk().Code[offset+1] = b2
 }
 
-func makeConstant(v vmvalue.Value) byte {
+func makeConstant(v vmvalue.Value) int {
 	constant := currentChunk().AddConstant(v)
-	if constant > MaxConstantCount {
+	if constant >= MaxConstantCount {
 		errorAtPrev("Too many constants in one chunk.")
 		return 0
 	}
-	return byte(constant)
+	return constant
 }
 
 func emitReturn() {
@@ -158,13 +170,8 @@ func endCompiler() *vmvalue.ObjFunction {
 	emitReturn()
 	fn := gCurrent.Function
 	gCurrent = gCurrent.Enclosing
-	if !gParser.hadError {
-		fnName := "<script>"
-		if fn.Name != nil {
-			fnName = string(fn.Name.Chars)
-		}
-		chunk := vmchunk.FromPtr(fn.Chunk)
-		vmdebug.DisassembleChunk(chunk, fnName)
+	if vmdebug.DebugDisassembler && !gParser.hadError {
+		disassembleFunction(fn)
 	}
 	return fn
 }
@@ -181,4 +188,13 @@ func endScope() {
 		emitOpcode(bytecode.OpPop)
 		gCurrent.LocalCount--
 	}
+}
+
+func disassembleFunction(fn *vmvalue.ObjFunction) {
+	fnName := "<script>"
+	if fn.Name != nil {
+		fnName = string(fn.Name.Chars)
+	}
+	chunk := vmchunk.FromPtr(fn.Chunk)
+	vmdebug.DisassembleChunk(chunk, fnName)
 }

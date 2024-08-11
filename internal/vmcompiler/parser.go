@@ -96,18 +96,20 @@ func parsePrecedence(precedence ParsePrecedence) {
 	}
 }
 
-func identifierConstant(token *scanner.Token) byte {
-	return makeConstant(vmvalue.ObjAsValue(hashtable.StringInternCopy(token.Lexeme())))
+func identifierConstant(token *scanner.Token) int {
+	identifier := hashtable.StringInternCopy(token.Lexeme())
+	value := vmvalue.ObjAsValue(identifier)
+	return makeConstant(value)
 }
 
-func resolveLocal(current *Compiler, name *scanner.Token) (slot byte, ok bool) {
-	for i := current.LocalCount - 1; i >= 0; i-- {
-		local := &current.Locals[i]
+func resolveLocal(compiler *Compiler, name *scanner.Token) (slot int, ok bool) {
+	for i := compiler.LocalCount - 1; i >= 0; i-- {
+		local := &compiler.Locals[i]
 		if bytes.Equal(name.Lexeme(), local.Name.Lexeme()) {
 			if local.Depth == -1 {
 				errorAtPrev("Can't read local variable in its own initializer.")
 			}
-			return byte(i), true
+			return i, true
 		}
 	}
 
@@ -124,6 +126,44 @@ func addLocal(name scanner.Token) {
 	gCurrent.LocalCount++
 	local.Name = name
 	local.Depth = -1
+}
+
+func resolveUpvalue(compiler *Compiler, name *scanner.Token) (slot int, ok bool) {
+	if compiler.Enclosing == nil {
+		return 0, false
+	}
+
+	if local, ok := resolveLocal(compiler.Enclosing, name); ok {
+		return addUpvalue(compiler, local, 1), true
+	}
+
+	if upvalue, ok := resolveUpvalue(compiler.Enclosing, name); ok {
+		return addUpvalue(compiler, upvalue, 0), true
+	}
+
+	return 0, false
+}
+
+func addUpvalue(compiler *Compiler, index int, islocal byte) int {
+	upvalueCount := compiler.Function.UpvalueCount
+
+	for i := range upvalueCount {
+		upvalue := &compiler.Upvalues[i]
+		if upvalue.Index == index && upvalue.Local == islocal {
+			return i
+		}
+	}
+
+	if upvalueCount == MaxUpvalueCount {
+		errorAtPrev("Too many closure variables in function.")
+		return 0
+	}
+
+	upvalue := &compiler.Upvalues[upvalueCount]
+	upvalue.Local = islocal
+	upvalue.Index = index
+	compiler.Function.UpvalueCount++
+	return upvalueCount
 }
 
 func declareVariable() {
@@ -147,7 +187,7 @@ func declareVariable() {
 	addLocal(*name)
 }
 
-func parseVariable(errorMessage string) byte {
+func parseVariable(errorMessage string) int {
 	consume(tokens.TokenIdentifier, errorMessage)
 
 	declareVariable()
@@ -165,13 +205,13 @@ func markInitialized() {
 	gCurrent.Locals[gCurrent.LocalCount-1].Depth = gCurrent.ScoreDepth
 }
 
-func defineVariable(global byte) {
+func defineVariable(global int) {
 	if gCurrent.ScoreDepth > 0 {
 		markInitialized()
 		return
 	}
 
-	emitBytes(bytecode.OpDefineGlobal, global)
+	emitOpByte(bytecode.OpDefineGlobal, byte(global))
 }
 
 func and_(ParsePrecedence) {
@@ -207,7 +247,7 @@ func block() {
 }
 
 func function(fnType FunctionType, fnName *vmvalue.ObjString) {
-	_ = NewCompiler(fnType, fnName)
+	compiler := NewCompiler(fnType, fnName)
 	beginScope()
 
 	consume(tokens.TokenLeftParen, "Expect '(' after function name.")
@@ -233,7 +273,12 @@ func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 
 	// end of function
 	fn := endCompiler()
-	emitBytes(bytecode.OpClosure, makeConstant(vmvalue.ObjAsValue(fn)))
+	emitOpByte(bytecode.OpClosure, byte(makeConstant(vmvalue.ObjAsValue(fn))))
+	for i := range fn.UpvalueCount {
+		upvalue := &compiler.Upvalues[i]
+		emitByte(upvalue.Local)
+		emitByte(byte(upvalue.Index))
+	}
 }
 
 func funDeclaration() {
@@ -455,10 +500,14 @@ func string_(ParsePrecedence) {
 func namedVariable(name scanner.Token, precedence ParsePrecedence) {
 	canAssign := precedence.CanAssign()
 	var getOp, setOp bytecode.OpCode
-	arg, local := resolveLocal(gCurrent, &name)
-	if local {
+
+	arg, ok := resolveLocal(gCurrent, &name)
+	if ok {
 		getOp = bytecode.OpGetLocal
 		setOp = bytecode.OpSetLocal
+	} else if arg, ok = resolveUpvalue(gCurrent, &name); ok {
+		getOp = bytecode.OpGetUpvalue
+		setOp = bytecode.OpSetUpvalue
 	} else {
 		arg = identifierConstant(&name)
 		getOp = bytecode.OpGetGlobal
@@ -467,9 +516,9 @@ func namedVariable(name scanner.Token, precedence ParsePrecedence) {
 
 	if canAssign && match(tokens.TokenEqual) {
 		expression()
-		emitBytes(setOp, arg)
+		emitOpByte(setOp, byte(arg))
 	} else {
-		emitBytes(getOp, arg)
+		emitOpByte(getOp, byte(arg))
 	}
 }
 
@@ -533,7 +582,7 @@ func binary(ParsePrecedence) {
 
 func call(ParsePrecedence) {
 	argCount := argumentList()
-	emitBytes(bytecode.OpCall, argCount)
+	emitOpByte(bytecode.OpCall, argCount)
 }
 
 func argumentList() byte {

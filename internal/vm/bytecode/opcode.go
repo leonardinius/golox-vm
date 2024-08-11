@@ -13,8 +13,10 @@ const (
 	OpPop
 	OpGetLocal
 	OpSetLocal
-	OpGetGlobal
+	OpGetUpvalue
+	OpSetUpvalue
 	OpDefineGlobal
+	OpGetGlobal
 	OpSetGlobal
 	OpEqual
 	OpGreater
@@ -45,9 +47,11 @@ var gOpCodeStrings = map[OpCode]string{
 	OpPop:          "OP_POP",
 	OpGetLocal:     "OP_GET_LOCAL",
 	OpSetLocal:     "OP_SET_LOCAL",
+	OpGetUpvalue:   "OP_GET_UPVALUE",
+	OpSetUpvalue:   "OP_SET_UPVALUE",
 	OpGetGlobal:    "OP_GET_GLOBAL",
-	OpDefineGlobal: "OP_DEFINE_GLOBAL",
 	OpSetGlobal:    "OP_SET_GLOBAL",
+	OpDefineGlobal: "OP_DEFINE_GLOBAL",
 	OpAdd:          "OP_ADD",
 	OpSubtract:     "OP_SUBTRACT",
 	OpMultiply:     "OP_MULTIPLY",
