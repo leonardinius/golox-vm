@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
+
+	_ "github.com/leonardinius/goloxvm/internal/tests"
 )
 
 func TestWriteIncrementsByOne(t *testing.T) {

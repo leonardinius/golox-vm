@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
+
+	_ "github.com/leonardinius/goloxvm/internal/tests"
 )
 
 func TestStringInternTake(t *testing.T) {

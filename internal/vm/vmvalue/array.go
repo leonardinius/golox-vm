@@ -18,6 +18,12 @@ func (va *ValueArray) Free() {
 	*va = vmmem.FreeSlice(*va)
 }
 
+func (va *ValueArray) Mark() {
+	for i := range *va {
+		MarkValue((*va)[i])
+	}
+}
+
 func (va *ValueArray) At(i int) Value {
 	return (*va)[i]
 }

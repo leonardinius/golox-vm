@@ -6,6 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
+
+	_ "github.com/leonardinius/goloxvm/internal/tests"
 )
 
 func TestGrowArrayShouldGrowCapacity(t *testing.T) {

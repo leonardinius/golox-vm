@@ -14,6 +14,10 @@ func FreeGlobals() {
 	gGlobalEnv.Free()
 }
 
+func MarkGlobals() {
+	gGlobalEnv.markTable()
+}
+
 func SetGlobal(name *vmvalue.ObjString, value vmvalue.Value) bool {
 	return gGlobalEnv.Set(name, value)
 }

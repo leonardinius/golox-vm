@@ -1,10 +1,6 @@
 package vmmem
 
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <errno.h>
-import "C" //nolint:gocritic // dupImport
-//nolint:gocritic // dupImport
+import "unsafe"
 
 func GrowCapacity(n int) int {
 	if n < 8 {
@@ -22,6 +18,9 @@ func FreeSlice[S ~[]E, E any](s S) S {
 }
 
 func ReallocateSlice[S ~[]E, E any](s S, oldSize, newSize int) S {
+	var v E
+	TriggerGC(int(unsafe.Sizeof(v)), oldSize, newSize)
+
 	if newSize == 0 {
 		s = nil
 	} else if newSize > oldSize {
@@ -36,4 +35,43 @@ func ReallocateSlice[S ~[]E, E any](s S, oldSize, newSize int) S {
 func AllocateSlice[E any](size int) []E {
 	var slice []E
 	return ReallocateSlice(slice, 0, size)
+}
+
+type memgc struct {
+	collect        func()
+	bytesAllocated int
+	nextGC         int
+}
+
+var gc = memgc{}
+
+const gcHeapGrowFactor = 2
+
+func SetGarbageCollector(f func()) {
+	// Proper way is to go with atomic.Value
+	// but! to not overkill in toy project
+	// I'll just use this hacky way
+	gc.collect = f
+	gc.bytesAllocated = 0
+	gc.nextGC = 1024 * 1024
+}
+
+func TriggerGC(elemSize, oldSize, newSize int) {
+	debugStressGC()
+	gc.bytesAllocated += ((elemSize * newSize) - (elemSize * oldSize))
+	if newSize > oldSize && gc.bytesAllocated > gc.nextGC {
+		CollectGarbage()
+	}
+}
+
+func CollectGarbage() {
+	debugPrintln("-- gc begin")
+	before := gc.bytesAllocated
+	gc.collect()
+	if before > gc.nextGC {
+		gc.nextGC = gc.bytesAllocated * gcHeapGrowFactor
+	}
+	after := gc.bytesAllocated
+	debugPrintln("-- gc end")
+	debugPrintlf("   collected %d bytes (from %d to %d) next at %d", before-after, before, after, gc.nextGC)
 }

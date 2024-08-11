@@ -43,3 +43,7 @@ func StringInternCopy(chars []byte) *vmvalue.ObjString {
 func findString(chars []byte, hash uint64) *vmvalue.ObjString {
 	return gInternStrings.findString(chars, hash)
 }
+
+func RemoveWhiteInternStrings() {
+	gInternStrings.removeWhiteKeys()
+}

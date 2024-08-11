@@ -29,7 +29,7 @@
     "-ldflags=-linkmode=internal",
     "-v",
     "-count=1",
-    // "-tags=debug",
+    "-tags=debug",
   ],
   "go.testTimeout": "60s",
   "[go]": {

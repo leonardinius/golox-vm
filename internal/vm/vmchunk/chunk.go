@@ -38,6 +38,10 @@ func (chunk *Chunk) Free() {
 	chunk.resetChunk()
 }
 
+func (chunk *Chunk) Mark() {
+	chunk.Constants.Mark()
+}
+
 func (chunk *Chunk) AsPtr() any {
 	return any(chunk)
 }

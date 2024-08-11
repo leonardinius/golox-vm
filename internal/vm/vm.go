@@ -61,6 +61,7 @@ func (i InterpretError) Error() string {
 }
 
 func InitVM() {
+	vmmem.SetGarbageCollector(GC)
 	hashtable.InitInternStrings()
 	hashtable.InitGlobals()
 	vmvalue.InitObjects()

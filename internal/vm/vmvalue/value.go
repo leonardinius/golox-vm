@@ -147,3 +147,9 @@ func ValueAsNativeFn(v Value) *ObjNative {
 func ValueAsClosure(v Value) *ObjClosure {
 	return valueAsObj[ObjClosure](v)
 }
+
+func MarkValue(v Value) {
+	if IsObj(v) {
+		MarkObject(ValueAsObj(v))
+	}
+}

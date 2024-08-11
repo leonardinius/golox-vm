@@ -8,6 +8,8 @@ import (
 
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
+
+	_ "github.com/leonardinius/goloxvm/internal/tests"
 )
 
 func TestBasicOps(t *testing.T) {
