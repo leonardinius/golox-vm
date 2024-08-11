@@ -33,6 +33,7 @@ const (
 	OpLoop
 	OpCall
 	OpClosure
+	OpCloseUpvalue
 	OpReturn
 )
 
@@ -64,6 +65,7 @@ var gOpCodeStrings = map[OpCode]string{
 	OpLoop:         "OP_LOOP",
 	OpCall:         "OP_CALL",
 	OpClosure:      "OP_CLOSURE",
+	OpCloseUpvalue: "OP_CLOSE_UPVALUE",
 	OpReturn:       "OP_RETURN",
 }
 

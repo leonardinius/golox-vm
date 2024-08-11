@@ -126,6 +126,7 @@ func addLocal(name scanner.Token) {
 	gCurrent.LocalCount++
 	local.Name = name
 	local.Depth = -1
+	local.IsCaptured = false
 }
 
 func resolveUpvalue(compiler *Compiler, name *scanner.Token) (slot int, ok bool) {
@@ -134,6 +135,7 @@ func resolveUpvalue(compiler *Compiler, name *scanner.Token) (slot int, ok bool)
 	}
 
 	if local, ok := resolveLocal(compiler.Enclosing, name); ok {
+		compiler.Enclosing.Locals[local].IsCaptured = true
 		return addUpvalue(compiler, local, 1), true
 	}
 

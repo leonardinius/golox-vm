@@ -41,8 +41,9 @@ type Compiler struct {
 }
 
 type Local struct {
-	Name  scanner.Token
-	Depth int
+	Name       scanner.Token
+	Depth      int
+	IsCaptured bool
 }
 
 func (l *Local) SetName(name string) {
@@ -70,6 +71,7 @@ func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) *Compiler {
 	compiler.LocalCount++
 	local.Depth = 0
 	local.SetName("")
+	local.IsCaptured = false
 	return &compiler
 }
 
@@ -183,9 +185,16 @@ func beginScope() {
 func endScope() {
 	gCurrent.ScoreDepth--
 
-	for gCurrent.LocalCount > 0 &&
-		gCurrent.Locals[gCurrent.LocalCount-1].Depth > gCurrent.ScoreDepth {
-		emitOpcode(bytecode.OpPop)
+	for gCurrent.LocalCount > 0 {
+		local := &gCurrent.Locals[gCurrent.LocalCount-1]
+		if gCurrent.ScoreDepth < local.Depth {
+			break
+		}
+		if local.IsCaptured {
+			emitOpcode(bytecode.OpCloseUpvalue)
+		} else {
+			emitOpcode(bytecode.OpPop)
+		}
 		gCurrent.LocalCount--
 	}
 }

@@ -29,10 +29,11 @@ type CallFrame struct {
 
 // VM is the virtual machine.
 type VM struct {
-	Frames     [MaxCallFrames]CallFrame
-	FrameCount int
-	Stack      [MaxStackCount]vmvalue.Value
-	StackTop   int
+	Frames       [MaxCallFrames]CallFrame
+	FrameCount   int
+	Stack        [MaxStackCount]vmvalue.Value
+	StackTop     int
+	OpenUpvalues *vmvalue.ObjUpvalue
 }
 
 var GlobalVM VM
@@ -62,7 +63,7 @@ func (i InterpretError) Error() string {
 func InitVM() {
 	hashtable.InitInternStrings()
 	hashtable.InitGlobals()
-	vmvalue.GRoots = nil
+	vmvalue.InitObjects()
 	defineNative("clock", vmstd.StdClockNative, 0)
 	resetStack()
 }
@@ -71,13 +72,13 @@ func FreeVM() {
 	hashtable.FreeGlobals()
 	hashtable.FreeInternStrings()
 	vmvalue.FreeObjects()
-	vmvalue.GRoots = nil
 	resetStack()
 }
 
 func resetStack() {
 	GlobalVM.StackTop = 0
 	GlobalVM.FrameCount = 0
+	GlobalVM.OpenUpvalues = nil
 }
 
 func Interpret(code []byte) (vmvalue.Value, error) {
@@ -157,8 +158,40 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 }
 
 func CaptureUpvalue(at int) *vmvalue.ObjUpvalue {
-	valuePtr := &GlobalVM.Stack[at]
-	return vmvalue.NewUpvalue(valuePtr)
+	value := &GlobalVM.Stack[at]
+	valuePtr := vmvalue.UPtrFromValue(value)
+
+	var prevUpvalue *vmvalue.ObjUpvalue
+	upvalue := GlobalVM.OpenUpvalues
+	for upvalue != nil && vmvalue.UPtrFromValue(upvalue.Location) > valuePtr {
+		prevUpvalue = upvalue
+		upvalue = upvalue.Next
+	}
+	if upvalue != nil && upvalue.Location == value {
+		return upvalue
+	}
+
+	createdUpvalue := vmvalue.NewUpvalue(value)
+	createdUpvalue.Next = upvalue
+	if prevUpvalue == nil {
+		GlobalVM.OpenUpvalues = createdUpvalue
+	} else {
+		prevUpvalue.Next = createdUpvalue
+	}
+
+	return createdUpvalue
+}
+
+func CloseUpvalues(at int) {
+	last := &GlobalVM.Stack[at]
+	lastPtr := vmvalue.UPtrFromValue(last)
+	for GlobalVM.OpenUpvalues != nil &&
+		vmvalue.UPtrFromValue(GlobalVM.OpenUpvalues.Location) >= lastPtr {
+		upvalue := GlobalVM.OpenUpvalues
+		upvalue.Closed = *upvalue.Location
+		upvalue.Location = &upvalue.Closed
+		GlobalVM.OpenUpvalues = upvalue.Next
+	}
 }
 
 func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
@@ -192,11 +225,7 @@ func DeleteGlobal(name *vmvalue.ObjString) bool {
 	return hashtable.DeleteGlobal(name)
 }
 
-func GCObjects() *vmvalue.Obj {
-	return vmvalue.GRoots
-}
-
-func Run() (vmvalue.Value, error) { //nolint:gocyclo
+func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 	if vmdebug.DebugDisassembler {
 		fmt.Println("== trace execution ==")
 		defer fmt.Println()
@@ -315,8 +344,12 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo
 		case bytecode.OpSetUpvalue:
 			slot := readByte(frame, chunk)
 			*frame.Closure.Upvalues[slot].Location = Peek(0)
+		case bytecode.OpCloseUpvalue:
+			CloseUpvalues(GlobalVM.StackTop - 1)
+			Pop()
 		case bytecode.OpReturn:
 			callReturnValue := Pop()
+			CloseUpvalues(frame.SlotsTop)
 			GlobalVM.FrameCount--
 			if GlobalVM.FrameCount == 0 {
 				Pop()

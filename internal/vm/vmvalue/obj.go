@@ -8,6 +8,11 @@ import (
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
 )
 
+var (
+	GRoots (*Obj)
+	gSeed  maphash.Seed
+)
+
 type ObjType byte
 
 const (
@@ -24,6 +29,7 @@ var gObjTypeStrings = map[ObjType]string{
 	ObjTypeFunction: "OBJ_FUNCTION",
 	ObjTypeNative:   "OBJ_NATIVE",
 	ObjTypeClosure:  "OBJ_CLOSURE",
+	ObjTypeUpvalue:  "OBJ_UPVALUE",
 }
 
 // String implements fmt.Stringer.
@@ -62,6 +68,34 @@ func (o *Obj) gc() {
 	// TODO: vmmeory GC tracking
 }
 
+type ObjString struct {
+	Obj
+	Chars []byte
+	Hash  uint64
+}
+
+func NewTakeString(chars []byte, hash uint64) *ObjString {
+	obj := allocateObject[ObjString](ObjTypeString)
+	obj.Chars = chars
+	obj.Hash = hash
+	return obj
+}
+
+func NewCopyString(chars []byte, hash uint64) *ObjString {
+	cloned := vmmem.AllocateSlice[byte](len(chars))
+	copy(cloned, chars)
+	return NewTakeString(cloned, hash)
+}
+
+func HashString(chars []byte) uint64 {
+	return maphash.Bytes(gSeed, chars)
+}
+
+// gc implements vmGc.
+func (o *ObjString) gc() {
+	o.Chars = vmmem.FreeSlice(o.Chars)
+}
+
 type ObjFunction struct {
 	Obj
 	Arity        int
@@ -69,6 +103,16 @@ type ObjFunction struct {
 	FreeChunkFn  func()
 	UpvalueCount int
 	Name         *ObjString
+}
+
+func NewFunction(chunk any, freeChunkFn func()) *ObjFunction {
+	obj := allocateObject[ObjFunction](ObjTypeFunction)
+	obj.Chunk = chunk
+	obj.FreeChunkFn = freeChunkFn
+	obj.Arity = 0
+	obj.UpvalueCount = 0
+	obj.Name = nil
+	return obj
 }
 
 // gc implements vmGc.
@@ -84,6 +128,13 @@ type ObjNative struct {
 	Arity byte
 }
 
+func NewNativeFunction(fn NativeFn, arity byte) *ObjNative {
+	obj := allocateObject[ObjNative](ObjTypeNative)
+	obj.Fn = fn
+	obj.Arity = arity
+	return obj
+}
+
 // gc implements vmGc.
 func (o *ObjNative) gc() {
 }
@@ -94,6 +145,13 @@ type ObjClosure struct {
 	Upvalues []*ObjUpvalue
 }
 
+func NewClosure(fn *ObjFunction) *ObjClosure {
+	obj := allocateObject[ObjClosure](ObjTypeClosure)
+	obj.Fn = fn
+	obj.Upvalues = vmmem.AllocateSlice[*ObjUpvalue](fn.UpvalueCount)
+	return obj
+}
+
 // gc implements vmGc.
 func (o *ObjClosure) gc() {
 	o.Upvalues = vmmem.FreeSlice(o.Upvalues)
@@ -102,39 +160,25 @@ func (o *ObjClosure) gc() {
 type ObjUpvalue struct {
 	Obj
 	Location *Value
+	Closed   Value
+	Next     *ObjUpvalue
+}
+
+func NewUpvalue(slot *Value) *ObjUpvalue {
+	obj := allocateObject[ObjUpvalue](ObjTypeUpvalue)
+	obj.Location = slot
+	obj.Closed = NilValue
+	obj.Next = nil
+	return obj
 }
 
 // gc implements vmGc.
 func (o *ObjUpvalue) gc() {
 }
 
-type ObjString struct {
-	Obj
-	Chars []byte
-	Hash  uint64
-}
-
-// gc implements vmGc.
-func (o *ObjString) gc() {
-	o.Chars = vmmem.FreeSlice(o.Chars)
-}
-
-var (
-	GRoots = (*Obj)(nil)
-	gSeed  = maphash.MakeSeed()
-)
-
-func castObject[T VMObjectable](o *Obj) *T {
-	return (*T)(unsafe.Pointer(o)) //nolint:gosec
-}
-
-func allocateObject[T VMObjectable](objType ObjType) *T {
-	o := new(T)                         // TODO: vmmeory GC tracking
-	object := (*Obj)(unsafe.Pointer(o)) //nolint:gosec
-	object.Type = objType
-	object.Next = GRoots
-	GRoots = object
-	return o
+func InitObjects() {
+	GRoots = nil
+	gSeed = maphash.MakeSeed()
 }
 
 func FreeObjects() {
@@ -170,49 +214,6 @@ func FreeObject(o *Obj) {
 	o.gc()
 }
 
-func NewTakeString(chars []byte, hash uint64) *ObjString {
-	obj := allocateObject[ObjString](ObjTypeString)
-	obj.Chars = chars
-	obj.Hash = hash
-	return obj
-}
-
-func NewCopyString(chars []byte, hash uint64) *ObjString {
-	cloned := vmmem.AllocateSlice[byte](len(chars))
-	copy(cloned, chars)
-	return NewTakeString(cloned, hash)
-}
-
-func NewFunction(chunk any, freeChunkFn func()) *ObjFunction {
-	obj := allocateObject[ObjFunction](ObjTypeFunction)
-	obj.Chunk = chunk
-	obj.FreeChunkFn = freeChunkFn
-	obj.Arity = 0
-	obj.UpvalueCount = 0
-	obj.Name = nil
-	return obj
-}
-
-func NewNativeFunction(fn NativeFn, arity byte) *ObjNative {
-	obj := allocateObject[ObjNative](ObjTypeNative)
-	obj.Fn = fn
-	obj.Arity = arity
-	return obj
-}
-
-func NewClosure(fn *ObjFunction) *ObjClosure {
-	obj := allocateObject[ObjClosure](ObjTypeClosure)
-	obj.Fn = fn
-	obj.Upvalues = vmmem.AllocateSlice[*ObjUpvalue](fn.UpvalueCount)
-	return obj
-}
-
-func NewUpvalue(slot *Value) *ObjUpvalue {
-	obj := allocateObject[ObjUpvalue](ObjTypeUpvalue)
-	obj.Location = slot
-	return obj
-}
-
 func PrintObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
@@ -243,6 +244,15 @@ func printFunction(f *ObjFunction) {
 	fmt.Print("<fn " + name + ">")
 }
 
-func HashString(chars []byte) uint64 {
-	return maphash.Bytes(gSeed, chars)
+func castObject[T VMObjectable](o *Obj) *T {
+	return (*T)(unsafe.Pointer(o)) //nolint:gosec
+}
+
+func allocateObject[T VMObjectable](objType ObjType) *T {
+	o := new(T)                         // TODO: vmmeory GC tracking
+	object := (*Obj)(unsafe.Pointer(o)) //nolint:gosec
+	object.Type = objType
+	object.Next = GRoots
+	GRoots = object
+	return o
 }

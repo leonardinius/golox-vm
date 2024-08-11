@@ -92,6 +92,14 @@ func valueAsObj[T VMObjectable](v Value) *T {
 	return (*T)(ptr)
 }
 
+func valuePtrAsUintPtr(v *Value) uintptr {
+	return uintptr(unsafe.Pointer(v)) //nolint:gosec
+}
+
+func UPtrFromValue(value *Value) uintptr {
+	return valuePtrAsUintPtr(value)
+}
+
 func ValueAsObj(v Value) *Obj {
 	return valueAsObj[Obj](v)
 }

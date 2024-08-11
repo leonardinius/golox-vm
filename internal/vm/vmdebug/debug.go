@@ -73,6 +73,7 @@ func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 		bytecode.OpNegate,
 		bytecode.OpPop,
 		bytecode.OpPrint,
+		bytecode.OpCloseUpvalue,
 		bytecode.OpReturn:
 		return simpleInstruction(instruction, offset)
 	default:
