@@ -175,7 +175,7 @@ func FreeObject(obj *Obj) {
 		v := castObject[ObjFunction](obj)
 		debugPrintFreeObject(obj, gObjFunctionSize)
 		debugAssertf(v != nil, "FreeObject: o is nil %v", obj)
-		// v.FreeChunkFn()
+		v.ChunkFreeFn()
 		vmmem.TriggerGC(gObjFunctionSize, 1, 0)
 	case ObjTypeNative:
 		debugPrintFreeObject(obj, gObjNativeSize)
@@ -261,8 +261,13 @@ type gcTraceStack struct {
 var gcTrace gcTraceStack = gcTraceStack{}
 
 func MarkObject[T VMObjectable](o *T) {
+	if o == nil {
+		return
+	}
+
 	obj := castObjectable(o)
-	if o == nil || obj.Marked {
+	if obj.Marked {
+		debugPrintSkipMarkedObject(obj)
 		return
 	}
 
@@ -277,7 +282,8 @@ func MarkObject[T VMObjectable](o *T) {
 }
 
 func GCTraceReferences() {
-	for i := range gcTrace.grayStack {
+	//nolint:intrange // grayStack gwors during blacken
+	for i := 0; i < len(gcTrace.grayStack); i++ {
 		obj := gcTrace.grayStack[i]
 		blackenObject(obj)
 	}

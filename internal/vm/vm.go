@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
@@ -243,7 +244,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 		// Debug tracing.
 		if vmdebug.DebugDisassembler {
 			// Debug GC issues
-			// runtime.GC() // TODO: check for failures
+			runtime.GC() // TODO: check for failures
 			traceInstruction(frame, chunk)
 		}
 
@@ -455,6 +456,10 @@ func binOpLess(a, b float64) bool {
 func frameChunk() (*CallFrame, *vmchunk.Chunk) {
 	frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
 	ch := vmchunk.FromPtr(frame.Closure.Fn.Chunk)
+	fmt.Printf("frame %p '", frame)
+	vmvalue.PrintObject(&frame.Closure.Fn.Obj)
+	fmt.Printf("' chunk %p %d constants\n", ch, len(ch.Constants))
+
 	return frame, ch
 }
 

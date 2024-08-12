@@ -12,6 +12,10 @@ func debugAssertf(condition bool, message string, args ...any) {
 	}
 }
 
+func debugPrintf(message string, args ...any) {
+	fmt.Printf(message, args...)
+}
+
 func debugPrintFreeObject(obj *Obj, size int) {
 	debugAssertf(obj != nil, "debugPrintFreeObject: o is nil %v", obj)
 	fmt.Printf("%p %-7s %04d for [%-12s] '", obj, "free", size, obj.Type)
@@ -27,6 +31,13 @@ func debugPrintAllocateObject(obj *Obj, size int) {
 func debugPrintMarkObject(obj *Obj) {
 	debugAssertf(obj != nil, "debugPrintMarkObject: o is nil %v", obj)
 	fmt.Printf("%p %-7s [%-12s] '", obj, "mark", obj.Type)
+	PrintObject(obj)
+	fmt.Println("'")
+}
+
+func debugPrintSkipMarkedObject(obj *Obj) {
+	debugAssertf(obj != nil, "debugPrintMarkObject: o is nil %v", obj)
+	fmt.Printf("%p %-7s [%-12s] '", obj, "skip", obj.Type)
 	PrintObject(obj)
 	fmt.Println("'")
 }
