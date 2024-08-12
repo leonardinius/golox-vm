@@ -27,7 +27,7 @@ const (
 )
 
 type Compiler struct {
-	Chunk    vmchunk.Chunk
+	Chunk    *vmchunk.Chunk
 	Function *vmvalue.ObjFunction
 	FnType   FunctionType
 

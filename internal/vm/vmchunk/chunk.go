@@ -13,8 +13,8 @@ type Chunk struct {
 	Lines     Lines
 }
 
-func NewChunk() Chunk {
-	chunk := Chunk{}
+func NewChunk() *Chunk {
+	chunk := new(Chunk)
 	chunk.Constants = vmvalue.NewValueArray()
 	chunk.resetChunk()
 	return chunk
@@ -65,6 +65,8 @@ func (chunk *Chunk) DebugGetLine(offset int) int {
 }
 
 func (chunk *Chunk) AddConstant(v vmvalue.Value) int {
+	vmmem.RetainGC(uint64(v))
+	defer vmmem.ReleaseGC()
 	return chunk.Constants.Write(v)
 }
 

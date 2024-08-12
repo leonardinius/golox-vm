@@ -39,6 +39,8 @@ func AllocateSlice[E any](size int) []E {
 
 type memgc struct {
 	collect        func()
+	retain         func(uint64)
+	release        func()
 	bytesAllocated int
 	nextGC         int
 }
@@ -56,11 +58,34 @@ func SetGarbageCollector(f func()) {
 	gc.nextGC = 1024 * 1024
 }
 
+func SetGarbageCollectorRetain(f func(uint64)) {
+	gc.retain = f
+}
+
+func SetGarbageCollectorRelease(f func()) {
+	gc.release = f
+}
+
+func RetainGC(v uint64) {
+	gc.retain(v)
+}
+
+func ReleaseGC() {
+	gc.release()
+}
+
 func TriggerGC(elemSize, oldSize, newSize int) {
-	debugStressGC()
-	gc.bytesAllocated += ((elemSize * newSize) - (elemSize * oldSize))
-	if newSize > oldSize && gc.bytesAllocated > gc.nextGC {
+	newBytes := elemSize * newSize
+	oldBytes := elemSize * oldSize
+	diffBytes := newBytes - oldBytes
+	gc.bytesAllocated += diffBytes
+
+	if newSize > oldSize && gc.bytesAllocated >= gc.nextGC {
 		CollectGarbage()
+	}
+
+	if newSize > oldSize {
+		debugStressGC()
 	}
 }
 

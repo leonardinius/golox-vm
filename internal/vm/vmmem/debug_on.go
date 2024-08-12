@@ -4,8 +4,6 @@ package vmmem
 
 import "fmt"
 
-const DebugGC = true
-
 func debugPrintln(message string) {
 	fmt.Println(message)
 }
@@ -17,8 +15,4 @@ func debugPrintlf(message string, args ...any) {
 
 func debugStressGC() {
 	CollectGarbage()
-}
-
-func DebugStressGC() {
-	debugStressGC()
 }

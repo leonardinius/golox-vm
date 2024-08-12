@@ -81,17 +81,23 @@ func BoolAsValue(b bool) Value {
 	return FalseValue
 }
 
+//go:nosplit
+//go:nocheckptr
 func ObjAsValue[T VMObjectable](v *T) Value {
 	ptr := uintptr(unsafe.Pointer(v)) //nolint:gosec
 	return Value(SignBit | QNAN | uint64(ptr))
 }
 
+//go:nosplit
+//go:nocheckptr
 func valueAsObj[T VMObjectable](v Value) *T {
 	addr := uintptr((uint64(v) & ^(SignBit | QNAN)))
 	ptr := *(*unsafe.Pointer)(unsafe.Pointer(&addr)) //nolint:gosec
 	return (*T)(ptr)
 }
 
+//go:nosplit
+//go:nocheckptr
 func valuePtrAsUintPtr(v *Value) uintptr {
 	return uintptr(unsafe.Pointer(v)) //nolint:gosec
 }

@@ -2,12 +2,12 @@
 
 package vmvalue
 
-func debugFreeObject(header *Obj, size int, message string) {}
+func debugAssertf(condition bool, message string, args ...any) {}
 
-func debugAllocateObject(header *Obj, size int, message string) {}
+func debugPrintFreeObject(header *Obj, size int) {}
 
-func debugMarkObject(obj *Obj) {}
+func debugPrintAllocateObject(header *Obj, size int) {}
 
-func debugBlackenObject(obj *Obj) {}
+func debugPrintMarkObject(obj *Obj) {}
 
-func debugStressGC() {}
+func debugPrintBlackenObject(obj *Obj) {}

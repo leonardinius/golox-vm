@@ -47,7 +47,7 @@ type VMObjectable interface {
 }
 
 var (
-	gObjSize         = int(unsafe.Sizeof(Obj{}))
+	_                = int(unsafe.Sizeof(Obj{}))
 	gObjStringSize   = int(unsafe.Sizeof(ObjString{}))
 	gObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
 	gObjNativeSize   = int(unsafe.Sizeof(ObjNative{}))
@@ -86,19 +86,19 @@ func HashString(chars []byte) uint64 {
 
 type ObjFunction struct {
 	Obj
-	Arity        int
-	Chunk        any
-	FreeChunkFn  func()
-	MarkChunkFn  func()
-	UpvalueCount int
-	Name         *ObjString
+	Arity                int
+	Chunk                any
+	ChunkFreeFn          func()
+	ChunkMarkConstantsFn func()
+	UpvalueCount         int
+	Name                 *ObjString
 }
 
-func NewFunction(chunk any, freeChunkFn, markChunkFn func()) *ObjFunction {
+func NewFunction(chunk any, chunkFreeFn, chunkMarkFn func()) *ObjFunction {
 	obj := allocateObject[ObjFunction](ObjTypeFunction, gObjFunctionSize)
 	obj.Chunk = chunk
-	obj.FreeChunkFn = freeChunkFn
-	obj.MarkChunkFn = markChunkFn
+	obj.ChunkFreeFn = chunkFreeFn
+	obj.ChunkMarkConstantsFn = chunkMarkFn
 	obj.Arity = 0
 	obj.UpvalueCount = 0
 	obj.Name = nil
@@ -160,38 +160,45 @@ func FreeObjects() {
 		FreeObject(GRoots)
 		GRoots = obj
 	}
-	gcTrace.grayStack = nil
+	gcTrace.grayStack = vmmem.FreeSlice(gcTrace.grayStack)
 }
 
-func FreeObject(o *Obj) {
-	switch o.Type {
+func FreeObject(obj *Obj) {
+	debugAssertf(obj != nil, "FreeObject: o is nil %v", obj)
+	switch obj.Type {
 	case ObjTypeString:
-		v := castObject[ObjString](o)
-		debugFreeObject(o, gObjStringSize, "free")
+		v := castObject[ObjString](obj)
+		debugPrintFreeObject(obj, gObjStringSize)
 		v.Chars = vmmem.FreeSlice(v.Chars)
 		vmmem.TriggerGC(gObjStringSize, 1, 0)
 	case ObjTypeFunction:
-		v := castObject[ObjFunction](o)
-		debugFreeObject(o, gObjFunctionSize, "free")
-		v.FreeChunkFn()
+		v := castObject[ObjFunction](obj)
+		debugPrintFreeObject(obj, gObjFunctionSize)
+		debugAssertf(v != nil, "FreeObject: o is nil %v", obj)
+		// v.FreeChunkFn()
 		vmmem.TriggerGC(gObjFunctionSize, 1, 0)
 	case ObjTypeNative:
-		debugFreeObject(o, gObjNativeSize, "free")
+		debugPrintFreeObject(obj, gObjNativeSize)
 		vmmem.TriggerGC(gObjNativeSize, 1, 0)
 	case ObjTypeClosure:
-		v := castObject[ObjClosure](o)
-		debugFreeObject(o, gObjClosureSize, "free")
+		v := castObject[ObjClosure](obj)
+		debugPrintFreeObject(obj, gObjClosureSize)
 		v.Upvalues = vmmem.FreeSlice(v.Upvalues)
 		vmmem.TriggerGC(gObjClosureSize, 1, 0)
 	case ObjTypeUpvalue:
-		debugFreeObject(o, gObjUpvalueSize, "free")
+		debugPrintFreeObject(obj, gObjUpvalueSize)
 		vmmem.TriggerGC(gObjUpvalueSize, 1, 0)
 	default:
-		panic(fmt.Sprintf("unable to free object of type %d", o.Type))
+		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
 	}
 }
 
+func PrintAnyObject[T VMObjectable](o *T) {
+	PrintObject(castObjectable(o))
+}
+
 func PrintObject(obj *Obj) {
+	debugAssertf(obj != nil, "PrintObject: o is nil %v", obj)
 	switch obj.Type {
 	case ObjTypeString:
 		v := string(castObject[ObjString](obj).Chars)
@@ -212,6 +219,8 @@ func PrintObject(obj *Obj) {
 }
 
 func printFunction(f *ObjFunction) {
+	debugAssertf(f != nil, "printFunction: o is nil %v", f.Obj.Type)
+
 	if f.Name == nil {
 		fmt.Print("<script>")
 		return
@@ -221,24 +230,27 @@ func printFunction(f *ObjFunction) {
 	fmt.Print("<fn " + name + ">")
 }
 
+//go:nosplit
+//go:nocheckptr
 func castObject[T VMObjectable](o *Obj) *T {
 	return (*T)(unsafe.Pointer(o)) //nolint:gosec
 }
 
+//go:nosplit
+//go:nocheckptr
 func castObjectable[T VMObjectable](o *T) *Obj {
 	return (*Obj)(unsafe.Pointer(o)) //nolint:gosec
 }
 
 func allocateObject[T VMObjectable](objType ObjType, size int) *T {
-	debugStressGC()
+	vmmem.TriggerGC(size, 0, 1)
 	o := new(T)
-	object := (*Obj)(unsafe.Pointer(o)) //nolint:gosec
+	object := castObjectable(o)
 	object.Type = objType
 	object.Marked = false
 	object.Next = GRoots
 	GRoots = object
-	vmmem.TriggerGC(size, 0, 1)
-	debugAllocateObject(object, size, "allocate")
+	debugPrintAllocateObject(object, size)
 	return o
 }
 
@@ -249,32 +261,31 @@ type gcTraceStack struct {
 var gcTrace gcTraceStack = gcTraceStack{}
 
 func MarkObject[T VMObjectable](o *T) {
-	if o == nil {
-		return
-	}
 	obj := castObjectable(o)
-	if obj.Marked {
+	if o == nil || obj.Marked {
 		return
 	}
 
-	debugMarkObject(obj)
-	obj.Marked = true
-
-	if len(gcTrace.grayStack)+1 < cap(gcTrace.grayStack) {
+	if len(gcTrace.grayStack)+1 > cap(gcTrace.grayStack) {
 		newCapacity := vmmem.GrowCapacity(cap(gcTrace.grayStack))
 		gcTrace.grayStack = slices.Grow(gcTrace.grayStack, newCapacity)
 	}
+
+	debugPrintMarkObject(obj)
+	obj.Marked = true
 	gcTrace.grayStack = append(gcTrace.grayStack, obj)
 }
 
 func GCTraceReferences() {
 	for i := range gcTrace.grayStack {
-		blackenObject(gcTrace.grayStack[i])
+		obj := gcTrace.grayStack[i]
+		blackenObject(obj)
 	}
+	gcTrace.grayStack = gcTrace.grayStack[:0]
 }
 
 func blackenObject(obj *Obj) {
-	debugBlackenObject(obj)
+	debugPrintBlackenObject(obj)
 
 	switch obj.Type {
 	case ObjTypeString, ObjTypeNative:
@@ -285,7 +296,7 @@ func blackenObject(obj *Obj) {
 	case ObjTypeFunction:
 		v := castObject[ObjFunction](obj)
 		MarkObject(v.Name)
-		v.MarkChunkFn()
+		v.ChunkMarkConstantsFn()
 	case ObjTypeClosure:
 		v := castObject[ObjClosure](obj)
 		MarkObject(v.Fn)

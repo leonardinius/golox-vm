@@ -183,6 +183,10 @@ func (h *Table) removeWhiteKeys() {
 	for i := range h.entries {
 		el := &h.entries[i]
 		if el.key != nil && !el.key.Marked {
+			vmdebug.Printf("--  >> | %p %-7s [%-12s] '", el.key, "delete", el.key.Type)
+			key := el.key
+			vmdebug.PrintObject(key)
+			vmdebug.Printf("'\n")
 			h.Delete(el.key)
 		}
 	}

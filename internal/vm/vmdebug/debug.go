@@ -15,6 +15,10 @@ const (
 	DebugAssert       = true
 )
 
+func Printf(message string, args ...any) {
+	fmt.Printf(message, args...)
+}
+
 func Assertf(condition bool, message string, args ...any) {
 	if !condition {
 		panic(fmt.Errorf(message, args...))
@@ -129,4 +133,16 @@ func jumpInstruction(op bytecode.OpCode, sign int, chunk *vmchunk.Chunk, offset 
 func simpleInstruction(op bytecode.OpCode, offset int) int {
 	fmt.Println(op.String())
 	return offset + 1
+}
+
+func PrintValue(v vmvalue.Value) {
+	vmvalue.PrintValue(v)
+}
+
+func PrintObject[T vmvalue.VMObjectable](o *T) {
+	if o == nil {
+		fmt.Print("nil")
+		return
+	}
+	vmvalue.PrintAnyObject(o)
 }
