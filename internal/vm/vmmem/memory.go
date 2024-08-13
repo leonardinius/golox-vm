@@ -66,11 +66,13 @@ func SetGarbageCollectorRelease(f func()) {
 	gc.release = f
 }
 
-func RetainGC(v uint64) {
+// PushRetainGC pushes value to stack to avoid marsweep gc.
+func PushRetainGC(v uint64) {
 	gc.retain(v)
 }
 
-func ReleaseGC() {
+// PopReleaseGC pops value from stack to "fix" the stack and allow future GC.
+func PopReleaseGC() {
 	gc.release()
 }
 

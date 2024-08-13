@@ -2,7 +2,6 @@ package vm
 
 import (
 	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
-	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 )
@@ -29,7 +28,6 @@ func markRoots() {
 
 	hashtable.MarkGlobals()
 
-	vmdebug.Printf("--  >> | compiler roots\n")
 	vmcompiler.MarkCompilerRoots()
 }
 

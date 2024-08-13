@@ -25,8 +25,8 @@ func StringInternTake(chars []byte) *vmvalue.ObjString {
 	}
 
 	str := vmvalue.NewTakeString(chars, hash)
-	vmmem.RetainGC(uint64(vmvalue.ObjAsValue(str)))
-	defer vmmem.ReleaseGC()
+	vmmem.PushRetainGC(uint64(vmvalue.ObjAsValue(str)))
+	defer vmmem.PopReleaseGC()
 	gInternStrings.Set(str, marker)
 	return str
 }
@@ -39,8 +39,8 @@ func StringInternCopy(chars []byte) *vmvalue.ObjString {
 	}
 
 	str := vmvalue.NewCopyString(chars, hash)
-	vmmem.RetainGC(uint64(vmvalue.ObjAsValue(str)))
-	defer vmmem.ReleaseGC()
+	vmmem.PushRetainGC(vmvalue.ValueAsNanBoxed(vmvalue.ObjAsValue(str)))
+	defer vmmem.PopReleaseGC()
 	gInternStrings.Set(str, marker)
 	return str
 }

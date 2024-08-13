@@ -65,8 +65,8 @@ func (chunk *Chunk) DebugGetLine(offset int) int {
 }
 
 func (chunk *Chunk) AddConstant(v vmvalue.Value) int {
-	vmmem.RetainGC(uint64(v))
-	defer vmmem.ReleaseGC()
+	vmmem.PushRetainGC(uint64(v))
+	defer vmmem.PopReleaseGC()
 	return chunk.Constants.Write(v)
 }
 

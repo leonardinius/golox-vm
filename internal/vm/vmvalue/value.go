@@ -9,6 +9,14 @@ import (
 // See https://craftinginterpreters.com/optimization.html.
 type Value uint64
 
+func ValueAsNanBoxed(v Value) uint64 {
+	return uint64(v)
+}
+
+func NanBoxedAsValue(v uint64) Value {
+	return Value(v)
+}
+
 type ValueType byte
 
 const (

@@ -15,10 +15,6 @@ const (
 	DebugAssert       = true
 )
 
-func Printf(message string, args ...any) {
-	fmt.Printf(message, args...)
-}
-
 func Assertf(condition bool, message string, args ...any) {
 	if !condition {
 		panic(fmt.Errorf(message, args...))

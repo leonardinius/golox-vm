@@ -12,8 +12,6 @@ const (
 	DebugAssert       = false
 )
 
-func Printf(message string, args ...any) {}
-
 func PrintValue(v vmvalue.Value) {}
 
 func PrintObject[T vmvalue.VMObjectable](o *T) {}

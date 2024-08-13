@@ -62,7 +62,7 @@ func (i InterpretError) Error() string {
 
 func InitVM() {
 	vmmem.SetGarbageCollector(GC)
-	vmmem.SetGarbageCollectorRetain(func(v uint64) { Push(vmvalue.Value(v)) })
+	vmmem.SetGarbageCollectorRetain(func(v uint64) { Push(vmvalue.NanBoxedAsValue(v)) })
 	vmmem.SetGarbageCollectorRelease(func() { _ = Pop() })
 	hashtable.InitInternStrings()
 	hashtable.InitGlobals()
