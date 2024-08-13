@@ -8,7 +8,7 @@ import (
 
 func TestInitGarabageCollector() {
 	vmmem.SetGarbageCollector(vm.GC)
-	vmmem.SetGarbageCollectorRetain(func(v uint64) { vm.Push(vmvalue.Value(v)) })
+	vmmem.SetGarbageCollectorRetain(func(v uint64) { vm.Push(vmvalue.NanBoxedAsValue(v)) })
 	vmmem.SetGarbageCollectorRelease(func() { _ = vm.Pop() })
 }
 
