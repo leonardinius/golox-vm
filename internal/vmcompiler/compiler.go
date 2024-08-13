@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	MaxArity         = math.MaxUint8
 	MaxConstantCount = math.MaxUint8 + 1
 	MaxLocalCount    = math.MaxUint8 + 1
 	MaxUpvalueCount  = math.MaxUint8 + 1

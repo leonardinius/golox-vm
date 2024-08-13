@@ -456,10 +456,6 @@ func binOpLess(a, b float64) bool {
 func frameChunk() (*CallFrame, *vmchunk.Chunk) {
 	frame := &GlobalVM.Frames[GlobalVM.FrameCount-1]
 	ch := vmchunk.FromPtr(frame.Closure.Fn.Chunk)
-	fmt.Printf("frame %p '", frame)
-	vmvalue.PrintObject(&frame.Closure.Fn.Obj)
-	fmt.Printf("' chunk %p %d constants\n", ch, len(ch.Constants))
-
 	return frame, ch
 }
 

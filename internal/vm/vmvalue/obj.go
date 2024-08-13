@@ -164,7 +164,6 @@ func FreeObjects() {
 }
 
 func FreeObject(obj *Obj) {
-	debugAssertf(obj != nil, "FreeObject: o is nil %v", obj)
 	switch obj.Type {
 	case ObjTypeString:
 		v := castObject[ObjString](obj)
@@ -174,7 +173,6 @@ func FreeObject(obj *Obj) {
 	case ObjTypeFunction:
 		v := castObject[ObjFunction](obj)
 		debugPrintFreeObject(obj, gObjFunctionSize)
-		debugAssertf(v != nil, "FreeObject: o is nil %v", obj)
 		v.ChunkFreeFn()
 		vmmem.TriggerGC(gObjFunctionSize, 1, 0)
 	case ObjTypeNative:
@@ -198,7 +196,6 @@ func PrintAnyObject[T VMObjectable](o *T) {
 }
 
 func PrintObject(obj *Obj) {
-	debugAssertf(obj != nil, "PrintObject: o is nil %v", obj)
 	switch obj.Type {
 	case ObjTypeString:
 		v := string(castObject[ObjString](obj).Chars)
@@ -219,8 +216,6 @@ func PrintObject(obj *Obj) {
 }
 
 func printFunction(f *ObjFunction) {
-	debugAssertf(f != nil, "printFunction: o is nil %v", f.Obj.Type)
-
 	if f.Name == nil {
 		fmt.Print("<script>")
 		return
