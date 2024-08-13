@@ -96,7 +96,7 @@ go/lint: $(BIN)/golangci-lint ### Lints the codebase using golangci-lint
 .PHONY: go/test
 go/test: $(BIN)/gotestsum ### Runs unit tests
 	@echo -e "$(CYAN)--- go test ...$(CLEAR)"
-	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./internal/...
+	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -tags debug -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./internal/...
 
 .PHONY: go/test_e2e
 go/test_e2e: $(BIN)/gotestsum ### Runs e2e tests

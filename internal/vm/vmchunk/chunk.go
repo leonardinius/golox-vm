@@ -38,6 +38,10 @@ func (chunk *Chunk) Free() {
 	chunk.resetChunk()
 }
 
+func (chunk *Chunk) Mark() {
+	chunk.Constants.Mark()
+}
+
 func (chunk *Chunk) AsPtr() any {
 	return any(chunk)
 }
@@ -61,6 +65,8 @@ func (chunk *Chunk) DebugGetLine(offset int) int {
 }
 
 func (chunk *Chunk) AddConstant(v vmvalue.Value) int {
+	vmmem.PushRetainGC(uint64(v))
+	defer vmmem.PopReleaseGC()
 	return chunk.Constants.Write(v)
 }
 

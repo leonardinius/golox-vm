@@ -256,7 +256,7 @@ func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 	if !check(tokens.TokenRightParen) {
 		for {
 			gCurrent.Function.Arity++
-			if gCurrent.Function.Arity > 255 {
+			if gCurrent.Function.Arity > MaxArity {
 				errorAtCurrent("Can't have more than 255 parameters.")
 			}
 
@@ -593,7 +593,7 @@ func argumentList() byte {
 		for {
 			expression()
 			argCount++
-			if argCount >= 255 {
+			if argCount > MaxArity {
 				errorAtPrev("Can't have more than 255 arguments.")
 			}
 			if !match(tokens.TokenComma) {

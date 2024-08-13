@@ -4,12 +4,17 @@ package vmdebug
 
 import (
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
+	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
 const (
 	DebugDisassembler = false
 	DebugAssert       = false
 )
+
+func PrintValue(v vmvalue.Value) {}
+
+func PrintObject[T vmvalue.VMObjectable](o *T) {}
 
 func Assertf(condition bool, message string, args ...any) {}
 

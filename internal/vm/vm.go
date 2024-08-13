@@ -61,6 +61,9 @@ func (i InterpretError) Error() string {
 }
 
 func InitVM() {
+	vmmem.SetGarbageCollector(GC)
+	vmmem.SetGarbageCollectorRetain(func(v uint64) { Push(vmvalue.NanBoxedAsValue(v)) })
+	vmmem.SetGarbageCollectorRelease(func() { _ = Pop() })
 	hashtable.InitInternStrings()
 	hashtable.InitGlobals()
 	vmvalue.InitObjects()
@@ -413,13 +416,15 @@ func opNegate() (ok bool) {
 }
 
 func stringConcat() (ok bool) {
-	b := vmvalue.ValueAsStringChars(Pop())
-	a := vmvalue.ValueAsStringChars(Pop())
+	b := vmvalue.ValueAsStringChars(Peek(0))
+	a := vmvalue.ValueAsStringChars(Peek(1))
 	length := len(a) + len(b)
 	chars := vmmem.AllocateSlice[byte](length)
 	copy(chars, a)
 	copy(chars[len(a):], b)
 	str := hashtable.StringInternTake(chars)
+	Pop()
+	Pop()
 	Push(vmvalue.ObjAsValue(str))
 	return true
 }
@@ -497,7 +502,7 @@ func runtimeError(format string, messageAndArgs ...any) (ok bool) {
 }
 
 func PrintlnValue(v vmvalue.Value) {
-	vmdebug.PrintlnValue(v)
+	vmvalue.PrintlnValue(v)
 }
 
 func defineNative(name string, fn vmvalue.NativeFn, arity byte) {

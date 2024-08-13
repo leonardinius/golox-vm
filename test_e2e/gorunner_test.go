@@ -459,10 +459,10 @@ func (r *Runner) InitSuites() {
 	mainFn := cmd.Main
 	mainGo := workDir + "/main.go"
 	goloxBin := workDir + "/bin/golox-vm"
-	cmd := exec.Command("go", "build", "-o", goloxBin, mainGo)
-	if outbytes, err := cmd.CombinedOutput(); err != nil {
+	exe := exec.Command("go", "build", "-o", goloxBin, mainGo)
+	if outbytes, err := exe.CombinedOutput(); err != nil {
 		out := string(outbytes)
-		r.t.Fatalf("go build failed with %v: %#v\n", err, out)
+		r.t.Fatalf("go build failed with %v: %s\n", err, out)
 	}
 
 	golox := func(name string, tests ...map[string]string) {

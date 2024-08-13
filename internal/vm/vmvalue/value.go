@@ -9,6 +9,14 @@ import (
 // See https://craftinginterpreters.com/optimization.html.
 type Value uint64
 
+func ValueAsNanBoxed(v Value) uint64 {
+	return uint64(v)
+}
+
+func NanBoxedAsValue(v uint64) Value {
+	return Value(v)
+}
+
 type ValueType byte
 
 const (
@@ -81,17 +89,23 @@ func BoolAsValue(b bool) Value {
 	return FalseValue
 }
 
+//go:nosplit
+//go:nocheckptr
 func ObjAsValue[T VMObjectable](v *T) Value {
 	ptr := uintptr(unsafe.Pointer(v)) //nolint:gosec
 	return Value(SignBit | QNAN | uint64(ptr))
 }
 
+//go:nosplit
+//go:nocheckptr
 func valueAsObj[T VMObjectable](v Value) *T {
 	addr := uintptr((uint64(v) & ^(SignBit | QNAN)))
 	ptr := *(*unsafe.Pointer)(unsafe.Pointer(&addr)) //nolint:gosec
 	return (*T)(ptr)
 }
 
+//go:nosplit
+//go:nocheckptr
 func valuePtrAsUintPtr(v *Value) uintptr {
 	return uintptr(unsafe.Pointer(v)) //nolint:gosec
 }
@@ -146,4 +160,10 @@ func ValueAsNativeFn(v Value) *ObjNative {
 
 func ValueAsClosure(v Value) *ObjClosure {
 	return valueAsObj[ObjClosure](v)
+}
+
+func MarkValue(v Value) {
+	if IsObj(v) {
+		MarkObject(ValueAsObj(v))
+	}
 }

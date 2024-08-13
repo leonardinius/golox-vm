@@ -3,6 +3,7 @@ package vmvalue
 import (
 	"fmt"
 	"hash/maphash"
+	"slices"
 	"unsafe"
 
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
@@ -45,27 +46,19 @@ type VMObjectable interface {
 	Obj | ObjString | ObjFunction | ObjNative | ObjClosure | ObjUpvalue
 }
 
-type vmGc interface {
-	gc()
-}
-
 var (
-	_ vmGc = (*Obj)(nil)
-	_ vmGc = (*ObjString)(nil)
-	_ vmGc = (*ObjFunction)(nil)
-	_ vmGc = (*ObjNative)(nil)
-	_ vmGc = (*ObjClosure)(nil)
-	_ vmGc = (*ObjUpvalue)(nil)
+	_                = int(unsafe.Sizeof(Obj{}))
+	gObjStringSize   = int(unsafe.Sizeof(ObjString{}))
+	gObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
+	gObjNativeSize   = int(unsafe.Sizeof(ObjNative{}))
+	gObjClosureSize  = int(unsafe.Sizeof(ObjClosure{}))
+	gObjUpvalueSize  = int(unsafe.Sizeof(ObjUpvalue{}))
 )
 
 type Obj struct {
-	Type ObjType
-	Next *Obj
-}
-
-// gc implements vmGc.
-func (o *Obj) gc() {
-	// TODO: vmmeory GC tracking
+	Type   ObjType
+	Marked bool
+	Next   *Obj
 }
 
 type ObjString struct {
@@ -75,7 +68,7 @@ type ObjString struct {
 }
 
 func NewTakeString(chars []byte, hash uint64) *ObjString {
-	obj := allocateObject[ObjString](ObjTypeString)
+	obj := allocateObject[ObjString](ObjTypeString, gObjStringSize)
 	obj.Chars = chars
 	obj.Hash = hash
 	return obj
@@ -91,33 +84,25 @@ func HashString(chars []byte) uint64 {
 	return maphash.Bytes(gSeed, chars)
 }
 
-// gc implements vmGc.
-func (o *ObjString) gc() {
-	o.Chars = vmmem.FreeSlice(o.Chars)
-}
-
 type ObjFunction struct {
 	Obj
-	Arity        int
-	Chunk        any
-	FreeChunkFn  func()
-	UpvalueCount int
-	Name         *ObjString
+	Arity                int
+	Chunk                any
+	ChunkFreeFn          func()
+	ChunkMarkConstantsFn func()
+	UpvalueCount         int
+	Name                 *ObjString
 }
 
-func NewFunction(chunk any, freeChunkFn func()) *ObjFunction {
-	obj := allocateObject[ObjFunction](ObjTypeFunction)
+func NewFunction(chunk any, chunkFreeFn, chunkMarkFn func()) *ObjFunction {
+	obj := allocateObject[ObjFunction](ObjTypeFunction, gObjFunctionSize)
 	obj.Chunk = chunk
-	obj.FreeChunkFn = freeChunkFn
+	obj.ChunkFreeFn = chunkFreeFn
+	obj.ChunkMarkConstantsFn = chunkMarkFn
 	obj.Arity = 0
 	obj.UpvalueCount = 0
 	obj.Name = nil
 	return obj
-}
-
-// gc implements vmGc.
-func (o *ObjFunction) gc() {
-	o.FreeChunkFn()
 }
 
 type NativeFn func(args ...Value) Value
@@ -129,14 +114,10 @@ type ObjNative struct {
 }
 
 func NewNativeFunction(fn NativeFn, arity byte) *ObjNative {
-	obj := allocateObject[ObjNative](ObjTypeNative)
+	obj := allocateObject[ObjNative](ObjTypeNative, gObjNativeSize)
 	obj.Fn = fn
 	obj.Arity = arity
 	return obj
-}
-
-// gc implements vmGc.
-func (o *ObjNative) gc() {
 }
 
 type ObjClosure struct {
@@ -146,15 +127,10 @@ type ObjClosure struct {
 }
 
 func NewClosure(fn *ObjFunction) *ObjClosure {
-	obj := allocateObject[ObjClosure](ObjTypeClosure)
+	obj := allocateObject[ObjClosure](ObjTypeClosure, gObjClosureSize)
 	obj.Fn = fn
 	obj.Upvalues = vmmem.AllocateSlice[*ObjUpvalue](fn.UpvalueCount)
 	return obj
-}
-
-// gc implements vmGc.
-func (o *ObjClosure) gc() {
-	o.Upvalues = vmmem.FreeSlice(o.Upvalues)
 }
 
 type ObjUpvalue struct {
@@ -165,19 +141,16 @@ type ObjUpvalue struct {
 }
 
 func NewUpvalue(slot *Value) *ObjUpvalue {
-	obj := allocateObject[ObjUpvalue](ObjTypeUpvalue)
+	obj := allocateObject[ObjUpvalue](ObjTypeUpvalue, gObjUpvalueSize)
 	obj.Location = slot
 	obj.Closed = NilValue
 	obj.Next = nil
 	return obj
 }
 
-// gc implements vmGc.
-func (o *ObjUpvalue) gc() {
-}
-
 func InitObjects() {
 	GRoots = nil
+	gcTrace = gcTraceStack{}
 	gSeed = maphash.MakeSeed()
 }
 
@@ -187,31 +160,39 @@ func FreeObjects() {
 		FreeObject(GRoots)
 		GRoots = obj
 	}
+	gcTrace.grayStack = vmmem.FreeSlice(gcTrace.grayStack)
 }
 
-func FreeObject(o *Obj) {
-	DebugFreeObject(o, "free")
-	switch o.Type {
+func FreeObject(obj *Obj) {
+	switch obj.Type {
 	case ObjTypeString:
-		v := castObject[ObjString](o)
-		v.gc()
+		v := castObject[ObjString](obj)
+		debugPrintFreeObject(obj, gObjStringSize)
+		v.Chars = vmmem.FreeSlice(v.Chars)
+		vmmem.TriggerGC(gObjStringSize, 1, 0)
 	case ObjTypeFunction:
-		v := castObject[ObjFunction](o)
-		v.gc()
+		v := castObject[ObjFunction](obj)
+		debugPrintFreeObject(obj, gObjFunctionSize)
+		v.ChunkFreeFn()
+		vmmem.TriggerGC(gObjFunctionSize, 1, 0)
 	case ObjTypeNative:
-		v := castObject[ObjNative](o)
-		v.gc()
+		debugPrintFreeObject(obj, gObjNativeSize)
+		vmmem.TriggerGC(gObjNativeSize, 1, 0)
 	case ObjTypeClosure:
-		v := castObject[ObjClosure](o)
-		v.gc()
+		v := castObject[ObjClosure](obj)
+		debugPrintFreeObject(obj, gObjClosureSize)
+		v.Upvalues = vmmem.FreeSlice(v.Upvalues)
+		vmmem.TriggerGC(gObjClosureSize, 1, 0)
 	case ObjTypeUpvalue:
-		v := castObject[ObjUpvalue](o)
-		v.gc()
+		debugPrintFreeObject(obj, gObjUpvalueSize)
+		vmmem.TriggerGC(gObjUpvalueSize, 1, 0)
+	default:
+		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
 	}
+}
 
-	// call shared GC part
-	// TODO: vmmeory GC tracking
-	o.gc()
+func PrintAnyObject[T VMObjectable](o *T) {
+	PrintObject(castObjectable(o))
 }
 
 func PrintObject(obj *Obj) {
@@ -244,15 +225,108 @@ func printFunction(f *ObjFunction) {
 	fmt.Print("<fn " + name + ">")
 }
 
+//go:nosplit
+//go:nocheckptr
 func castObject[T VMObjectable](o *Obj) *T {
 	return (*T)(unsafe.Pointer(o)) //nolint:gosec
 }
 
-func allocateObject[T VMObjectable](objType ObjType) *T {
-	o := new(T)                         // TODO: vmmeory GC tracking
-	object := (*Obj)(unsafe.Pointer(o)) //nolint:gosec
+//go:nosplit
+//go:nocheckptr
+func castObjectable[T VMObjectable](o *T) *Obj {
+	return (*Obj)(unsafe.Pointer(o)) //nolint:gosec
+}
+
+func allocateObject[T VMObjectable](objType ObjType, size int) *T {
+	vmmem.TriggerGC(size, 0, 1)
+	o := new(T)
+	object := castObjectable(o)
 	object.Type = objType
+	object.Marked = false
 	object.Next = GRoots
 	GRoots = object
+	debugPrintAllocateObject(object, size)
 	return o
+}
+
+type gcTraceStack struct {
+	grayStack []*Obj
+}
+
+var gcTrace gcTraceStack = gcTraceStack{}
+
+func MarkObject[T VMObjectable](o *T) {
+	if o == nil {
+		return
+	}
+
+	obj := castObjectable(o)
+	if obj.Marked {
+		debugPrintSkipMarkedObject(obj)
+		return
+	}
+
+	if len(gcTrace.grayStack)+1 > cap(gcTrace.grayStack) {
+		newCapacity := vmmem.GrowCapacity(cap(gcTrace.grayStack))
+		gcTrace.grayStack = slices.Grow(gcTrace.grayStack, newCapacity)
+	}
+
+	debugPrintMarkObject(obj)
+	obj.Marked = true
+	gcTrace.grayStack = append(gcTrace.grayStack, obj)
+}
+
+func GCTraceReferences() {
+	//nolint:intrange // grayStack gwors during blacken
+	for i := 0; i < len(gcTrace.grayStack); i++ {
+		obj := gcTrace.grayStack[i]
+		blackenObject(obj)
+	}
+	gcTrace.grayStack = gcTrace.grayStack[:0]
+}
+
+func blackenObject(obj *Obj) {
+	debugPrintBlackenObject(obj)
+
+	switch obj.Type {
+	case ObjTypeString, ObjTypeNative:
+		// do nothing
+	case ObjTypeUpvalue:
+		v := castObject[ObjUpvalue](obj)
+		MarkValue(v.Closed)
+	case ObjTypeFunction:
+		v := castObject[ObjFunction](obj)
+		MarkObject(v.Name)
+		v.ChunkMarkConstantsFn()
+	case ObjTypeClosure:
+		v := castObject[ObjClosure](obj)
+		MarkObject(v.Fn)
+		for i := range v.Upvalues {
+			MarkObject(v.Upvalues[i])
+		}
+	default:
+		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
+	}
+}
+
+func GCSweep() {
+	var previous *Obj
+	obj := GRoots
+
+	for obj != nil {
+		if obj.Marked {
+			obj.Marked = false
+			previous = obj
+			obj = obj.Next
+		} else {
+			unreached := obj
+			obj = obj.Next
+			if previous != nil {
+				previous.Next = obj
+			} else {
+				GRoots = obj
+			}
+			FreeObject(unreached)
+		}
+	}
 }

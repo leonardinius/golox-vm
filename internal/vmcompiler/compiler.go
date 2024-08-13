@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	MaxArity         = math.MaxUint8
 	MaxConstantCount = math.MaxUint8 + 1
 	MaxLocalCount    = math.MaxUint8 + 1
 	MaxUpvalueCount  = math.MaxUint8 + 1
@@ -62,7 +63,7 @@ func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) *Compiler {
 	compiler := Compiler{}
 	compiler.Chunk = chunk
 	compiler.FnType = fnType
-	compiler.Function = vmvalue.NewFunction(chunk.AsPtr(), chunk.Free)
+	compiler.Function = vmvalue.NewFunction(chunk.AsPtr(), chunk.Free, chunk.Mark)
 	compiler.Function.Name = fnName
 	compiler.Enclosing = gCurrent
 	gCurrent = &compiler
@@ -206,4 +207,12 @@ func disassembleFunction(fn *vmvalue.ObjFunction) {
 	}
 	chunk := vmchunk.FromPtr(fn.Chunk)
 	vmdebug.DisassembleChunk(chunk, fnName)
+}
+
+func MarkCompilerRoots() {
+	compiler := gCurrent
+	for compiler != nil {
+		vmvalue.MarkObject(compiler.Function)
+		compiler = compiler.Enclosing
+	}
 }

@@ -130,3 +130,15 @@ func simpleInstruction(op bytecode.OpCode, offset int) int {
 	fmt.Println(op.String())
 	return offset + 1
 }
+
+func PrintValue(v vmvalue.Value) {
+	vmvalue.PrintValue(v)
+}
+
+func PrintObject[T vmvalue.VMObjectable](o *T) {
+	if o == nil {
+		fmt.Print("nil")
+		return
+	}
+	vmvalue.PrintAnyObject(o)
+}

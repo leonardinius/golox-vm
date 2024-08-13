@@ -170,3 +170,20 @@ func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 		index = (index + 1) & mask
 	}
 }
+
+func (h *Table) markTable() {
+	for i := range h.entries {
+		el := &h.entries[i]
+		vmvalue.MarkObject(el.key)
+		vmvalue.MarkValue(el.value)
+	}
+}
+
+func (h *Table) removeWhiteKeys() {
+	for i := range h.entries {
+		el := &h.entries[i]
+		if el.key != nil && !el.key.Marked {
+			h.Delete(el.key)
+		}
+	}
+}
