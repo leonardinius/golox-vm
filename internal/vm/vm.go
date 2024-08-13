@@ -244,7 +244,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 		// Debug tracing.
 		if vmdebug.DebugDisassembler {
 			// Debug GC issues
-			runtime.GC() // TODO: check for failures
+			runtime.GC()
 			traceInstruction(frame, chunk)
 		}
 
