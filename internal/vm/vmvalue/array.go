@@ -1,8 +1,6 @@
 package vmvalue
 
 import (
-	"slices"
-
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
 )
 
@@ -35,7 +33,7 @@ func (va *ValueArray) Write(v Value) int {
 
 	if cap(*va) < len(*va)+1 {
 		capacity := vmmem.GrowCapacity(cap(*va))
-		*va = slices.Grow(*va, capacity)
+		*va = vmmem.GrowSlice(*va, capacity)
 		vaarray := *va
 		*va = vaarray[0:length:capacity]
 	}

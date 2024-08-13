@@ -13,8 +13,8 @@ type Chunk struct {
 	Lines     Lines
 }
 
-func NewChunk() *Chunk {
-	chunk := new(Chunk)
+func NewChunk() Chunk {
+	chunk := Chunk{}
 	chunk.Constants = vmvalue.NewValueArray()
 	chunk.resetChunk()
 	return chunk

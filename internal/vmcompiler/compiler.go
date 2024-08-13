@@ -61,7 +61,7 @@ type Upvalue struct {
 func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) *Compiler {
 	chunk := vmchunk.NewChunk()
 	compiler := Compiler{}
-	compiler.Chunk = chunk
+	compiler.Chunk = &chunk
 	compiler.FnType = fnType
 	compiler.Function = vmvalue.NewFunction(chunk.AsPtr(), chunk.Free, chunk.Mark)
 	compiler.Function.Name = fnName
