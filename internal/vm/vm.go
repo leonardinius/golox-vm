@@ -150,8 +150,11 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 
 			iArgs := int(argCount)
 			args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
-			value := native.Fn(args...)
-			GlobalVM.StackTop -= (iArgs + 1)
+			value, err := native.Fn(args...)
+			if err != nil {
+				return runtimeError(fmt.Sprintf("native: %#v", err))
+			}
+			GlobalVM.StackTop -= iArgs + 1
 			Push(value)
 			return true
 		}

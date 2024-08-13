@@ -105,7 +105,7 @@ func NewFunction(chunk any, chunkFreeFn, chunkMarkFn func()) *ObjFunction {
 	return obj
 }
 
-type NativeFn func(args ...Value) Value
+type NativeFn func(args ...Value) (Value, error)
 
 type ObjNative struct {
 	Obj

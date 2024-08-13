@@ -66,7 +66,7 @@ func (h *Table) Set(
 
 func (h *Table) findEntry(entries []entry, key *vmvalue.ObjString) *entry {
 	capacity := uint64(len(entries))
-	vmdebug.Assertf(capacity%2 == 0, "capacity must be greater than 0 (%d)", capacity)
+	debugAssertIsPowerOfTwo(capacity)
 	mask := capacity - 1
 	index := key.Hash & mask
 	var tombstone *entry = nil
@@ -156,7 +156,7 @@ func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 	}
 
 	capacity := uint64(len(h.entries))
-	vmdebug.Assertf(capacity%2 == 0, "capacity must be greater than 0 (%d)", capacity)
+
 	mask := capacity - 1
 	index := hash & mask
 	for {
@@ -164,7 +164,9 @@ func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 
 		if el.key == nil && vmvalue.IsNil(el.value) {
 			return nil
-		} else if hash == el.key.Hash && bytes.Equal(chars, el.key.Chars) {
+		} else if el.key != nil &&
+			hash == el.key.Hash &&
+			bytes.Equal(chars, el.key.Chars) {
 			return el.key
 		}
 		index = (index + 1) & mask
@@ -186,4 +188,8 @@ func (h *Table) removeWhiteKeys() {
 			h.Delete(el.key)
 		}
 	}
+}
+
+func debugAssertIsPowerOfTwo(n uint64) {
+	vmdebug.Assertf(n != 0 && (n&(n-1)) == 0, "capacity must be power of 2 (%d)", n)
 }
