@@ -31,13 +31,6 @@ func debugPrintMarkObject(obj *Obj) {
 	fmt.Println("'")
 }
 
-func debugPrintSkipMarkedObject(obj *Obj) {
-	debugAssertf(obj != nil, "debugPrintMarkObject: o is nil %v", obj)
-	fmt.Printf("%p %-7s [%-12s] '", obj, "skip", obj.Type)
-	PrintObject(obj)
-	fmt.Println("'")
-}
-
 func debugPrintBlackenObject(obj *Obj) {
 	debugAssertf(obj != nil, "debugPrintBlackenObject: o is nil %v", obj)
 	fmt.Printf("%p %-7s [%-12s] '", obj, "blacken", obj.Type)

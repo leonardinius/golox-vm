@@ -259,10 +259,8 @@ func MarkObject[T VMObjectable](o *T) {
 	if o == nil {
 		return
 	}
-
 	obj := castObjectable(o)
 	if obj.Marked {
-		debugPrintSkipMarkedObject(obj)
 		return
 	}
 
