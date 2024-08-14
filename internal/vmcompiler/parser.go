@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
-	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
@@ -97,7 +96,7 @@ func parsePrecedence(precedence ParsePrecedence) {
 }
 
 func identifierConstant(token *scanner.Token) int {
-	identifier := hashtable.StringInternCopy(token.Lexeme())
+	identifier := vmvalue.StringInternCopy(token.Lexeme())
 	value := vmvalue.ObjAsValue(identifier)
 	return makeConstant(value)
 }
@@ -283,10 +282,22 @@ func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 	}
 }
 
+func classDeclaration() {
+	consume(tokens.TokenIdentifier, "Expect class name.")
+	nameConstant := identifierConstant(&gParser.previous)
+	declareVariable()
+
+	emitOpByte(bytecode.OpClass, byte(nameConstant))
+	defineVariable(nameConstant)
+
+	consume(tokens.TokenLeftBrace, "Expect '{' before class body.")
+	consume(tokens.TokenRightBrace, "Expect '}' after class body.")
+}
+
 func funDeclaration() {
 	global := parseVariable("Expect function name.")
 	markInitialized()
-	function(FunctionTypeFunction, hashtable.StringInternTake(gParser.previous.Lexeme()))
+	function(FunctionTypeFunction, vmvalue.StringInternTake(gParser.previous.Lexeme()))
 	defineVariable(global)
 }
 
@@ -350,6 +361,8 @@ func synchronize() {
 
 func declaration() {
 	switch {
+	case match(tokens.TokenClass):
+		classDeclaration()
 	case match(tokens.TokenFun):
 		funDeclaration()
 	case match(tokens.TokenVar):
@@ -495,7 +508,7 @@ func number(ParsePrecedence) {
 func string_(ParsePrecedence) {
 	t := gParser.previous
 	chars := t.Source[t.Start+1 : t.Start+t.Length-1]
-	str := hashtable.StringInternCopy(chars)
+	str := vmvalue.StringInternCopy(chars)
 	emitConstant(vmvalue.ObjAsValue(str))
 }
 
@@ -605,6 +618,18 @@ func argumentList() byte {
 	return byte(argCount)
 }
 
+func dot(precedence ParsePrecedence) {
+	consume(tokens.TokenIdentifier, "Expect property name after '.'.")
+	name := identifierConstant(&gParser.previous)
+
+	if precedence.CanAssign() && match(tokens.TokenEqual) {
+		expression()
+		emitOpByte(bytecode.OpSetProperty, byte(name))
+	} else {
+		emitOpByte(bytecode.OpGetProperty, byte(name))
+	}
+}
+
 func unary(ParsePrecedence) {
 	operatorType := gParser.previous.Type
 	parsePrecedence(PrecedenceUnary)
@@ -685,7 +710,7 @@ func init() {
 		tokens.TokenLeftBrace:    {nil, nil, PrecedenceNone},
 		tokens.TokenRightBrace:   {nil, nil, PrecedenceNone},
 		tokens.TokenComma:        {nil, nil, PrecedenceNone},
-		tokens.TokenDot:          {nil, nil, PrecedenceNone},
+		tokens.TokenDot:          {nil, dot, PrecedenceCall},
 		tokens.TokenMinus:        {unary, binary, PrecedenceTerm},
 		tokens.TokenPlus:         {nil, binary, PrecedenceTerm},
 		tokens.TokenSemicolon:    {nil, nil, PrecedenceNone},

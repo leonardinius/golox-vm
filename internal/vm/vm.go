@@ -7,7 +7,6 @@ import (
 	"runtime"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
-	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmchunk"
 	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
@@ -64,8 +63,8 @@ func InitVM() {
 	vmmem.SetGarbageCollector(GC)
 	vmmem.SetGarbageCollectorRetain(func(v uint64) { Push(vmvalue.NanBoxedAsValue(v)) })
 	vmmem.SetGarbageCollectorRelease(func() { _ = Pop() })
-	hashtable.InitInternStrings()
-	hashtable.InitGlobals()
+	vmvalue.InitInternStrings()
+	vmvalue.InitGlobals()
 	vmvalue.InitObjects()
 	defineNative0("clock", vmstd.StdClockNative)
 	defineNative1("formatNumber", vmstd.StdFormatNumber)
@@ -73,8 +72,8 @@ func InitVM() {
 }
 
 func FreeVM() {
-	hashtable.FreeGlobals()
-	hashtable.FreeInternStrings()
+	vmvalue.FreeGlobals()
+	vmvalue.FreeInternStrings()
 	vmvalue.FreeObjects()
 	resetStack()
 }
@@ -138,6 +137,7 @@ func SetStackAt(at int, v vmvalue.Value) {
 }
 
 func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
+	iArgs := int(argCount)
 	if vmvalue.IsObj(callee) {
 		switch vmvalue.ObjTypeTag(callee) {
 		case vmvalue.ObjTypeClosure:
@@ -149,7 +149,6 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 					native.Arity, argCount)
 			}
 
-			iArgs := int(argCount)
 			args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
 			value, err := native.Fn(args...)
 			if err != nil {
@@ -157,6 +156,11 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 			}
 			GlobalVM.StackTop -= iArgs + 1
 			Push(value)
+			return true
+		case vmvalue.ObjTypeClass:
+			klass := vmvalue.ValueAsClass(callee)
+			instance := vmvalue.ObjAsValue(vmvalue.NewInstance(klass))
+			GlobalVM.Stack[GlobalVM.StackTop-iArgs-1] = instance
 			return true
 		}
 	}
@@ -221,15 +225,15 @@ func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
 }
 
 func SetGlobal(name *vmvalue.ObjString, value vmvalue.Value) bool {
-	return hashtable.SetGlobal(name, value)
+	return vmvalue.SetGlobal(name, value)
 }
 
 func GetGlobal(name *vmvalue.ObjString) (vmvalue.Value, bool) {
-	return hashtable.GetGlobal(name)
+	return vmvalue.GetGlobal(name)
 }
 
 func DeleteGlobal(name *vmvalue.ObjString) bool {
-	return hashtable.DeleteGlobal(name)
+	return vmvalue.DeleteGlobal(name)
 }
 
 func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
@@ -315,6 +319,35 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 			name := readString(frame, chunk)
 			SetGlobal(name, Peek(0))
 			Pop()
+		case bytecode.OpGetProperty:
+			if !vmvalue.IsInstance(Peek(0)) {
+				ok = runtimeError("Only instances have properties.")
+				break
+			}
+			instance := vmvalue.ValueAsInstance(Peek(0))
+			name := readString(frame, chunk)
+
+			if value, found := instance.Fields.Get(name); found {
+				Pop() // Instance.
+				Push(value)
+				break
+			}
+			ok = runtimeError("Undefined property '%s'.", string(name.Chars))
+		case bytecode.OpSetProperty:
+			if !vmvalue.IsInstance(Peek(1)) {
+				ok = runtimeError("Only instances have fields.")
+				break
+			}
+			instance := vmvalue.ValueAsInstance(Peek(1))
+			name := readString(frame, chunk)
+			instance.Fields.Set(name, Peek(0))
+			value := Pop()
+			Pop()
+			Push(value)
+		case bytecode.OpClass:
+			name := readString(frame, chunk)
+			class := vmvalue.NewClass(name)
+			Push(vmvalue.ObjAsValue(class))
 		case bytecode.OpJump:
 			offset := readShort(frame, chunk)
 			frame.IP += int(offset)
@@ -426,7 +459,7 @@ func stringConcat() (ok bool) {
 	chars := vmmem.AllocateSlice[byte](length)
 	copy(chars, a)
 	copy(chars[len(a):], b)
-	str := hashtable.StringInternTake(chars)
+	str := vmvalue.StringInternTake(chars)
 	Pop()
 	Pop()
 	Push(vmvalue.ObjAsValue(str))
@@ -522,7 +555,7 @@ func defineNative1(name string, fn func(vmvalue.Value) (vmvalue.Value, error)) {
 }
 
 func defineNative(name string, arity byte, fn vmvalue.NativeFn) {
-	nameObj := hashtable.StringInternCopy([]byte(name))
+	nameObj := vmvalue.StringInternCopy([]byte(name))
 	nameValue := vmvalue.ObjAsValue(nameObj)
 	Push(nameValue)
 	fnObj := vmvalue.NewNativeFunction(fn, arity)

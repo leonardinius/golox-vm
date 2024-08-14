@@ -34,6 +34,9 @@ const (
 	OpCall
 	OpClosure
 	OpCloseUpvalue
+	OpClass
+	OpSetProperty
+	OpGetProperty
 	OpReturn
 )
 
@@ -66,7 +69,10 @@ var gOpCodeStrings = map[OpCode]string{
 	OpCall:         "OP_CALL",
 	OpClosure:      "OP_CLOSURE",
 	OpCloseUpvalue: "OP_CLOSE_UPVALUE",
+	OpClass:        "OP_CLASS",
 	OpReturn:       "OP_RETURN",
+	OpSetProperty:  "OP_SET_PROPERTY",
+	OpGetProperty:  "OP_GET_PROPERTY",
 }
 
 func (op OpCode) String() string {
