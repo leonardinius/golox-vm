@@ -6,8 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	_ "github.com/leonardinius/goloxvm/internal/tests"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
+
+	_ "github.com/leonardinius/goloxvm/internal/tests"
 )
 
 func TestStringInternTake(t *testing.T) {
