@@ -319,6 +319,31 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 			name := readString(frame, chunk)
 			SetGlobal(name, Peek(0))
 			Pop()
+		case bytecode.OpGetProperty:
+			if !vmvalue.IsInstance(Peek(0)) {
+				ok = runtimeError("Only instances have properties.")
+				break
+			}
+			instance := vmvalue.ValueAsInstance(Peek(0))
+			name := readString(frame, chunk)
+
+			if value, found := instance.Fields.Get(name); found {
+				Pop() // Instance.
+				Push(value)
+				break
+			}
+			ok = runtimeError("Undefined property '%s'.", string(name.Chars))
+		case bytecode.OpSetProperty:
+			if !vmvalue.IsInstance(Peek(1)) {
+				ok = runtimeError("Only instances have fields.")
+				break
+			}
+			instance := vmvalue.ValueAsInstance(Peek(1))
+			name := readString(frame, chunk)
+			instance.Fields.Set(name, Peek(0))
+			value := Pop()
+			Pop()
+			Push(value)
 		case bytecode.OpClass:
 			name := readString(frame, chunk)
 			class := vmvalue.NewClass(name)

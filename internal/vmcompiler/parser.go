@@ -618,6 +618,18 @@ func argumentList() byte {
 	return byte(argCount)
 }
 
+func dot(precedence ParsePrecedence) {
+	consume(tokens.TokenIdentifier, "Expect property name after '.'.")
+	name := identifierConstant(&gParser.previous)
+
+	if precedence.CanAssign() && match(tokens.TokenEqual) {
+		expression()
+		emitOpByte(bytecode.OpSetProperty, byte(name))
+	} else {
+		emitOpByte(bytecode.OpGetProperty, byte(name))
+	}
+}
+
 func unary(ParsePrecedence) {
 	operatorType := gParser.previous.Type
 	parsePrecedence(PrecedenceUnary)
@@ -698,7 +710,7 @@ func init() {
 		tokens.TokenLeftBrace:    {nil, nil, PrecedenceNone},
 		tokens.TokenRightBrace:   {nil, nil, PrecedenceNone},
 		tokens.TokenComma:        {nil, nil, PrecedenceNone},
-		tokens.TokenDot:          {nil, nil, PrecedenceNone},
+		tokens.TokenDot:          {nil, dot, PrecedenceCall},
 		tokens.TokenMinus:        {unary, binary, PrecedenceTerm},
 		tokens.TokenPlus:         {nil, binary, PrecedenceTerm},
 		tokens.TokenSemicolon:    {nil, nil, PrecedenceNone},
