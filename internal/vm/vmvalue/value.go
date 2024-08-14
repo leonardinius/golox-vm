@@ -146,6 +146,10 @@ func IsClass(v Value) bool {
 	return isObjType(v, ObjTypeClass)
 }
 
+func IsInstance(v Value) bool {
+	return isObjType(v, ObjTypeInstance)
+}
+
 func ValueAsString(v Value) *ObjString {
 	return valueAsObj[ObjString](v)
 }
@@ -168,6 +172,10 @@ func ValueAsClosure(v Value) *ObjClosure {
 
 func ValueAsClass(v Value) *ObjClass {
 	return valueAsObj[ObjClass](v)
+}
+
+func ValueAsInstance(v Value) *ObjInstance {
+	return valueAsObj[ObjInstance](v)
 }
 
 func MarkValue(v Value) {

@@ -170,7 +170,7 @@ func (h *Table) findString(chars []byte, hash uint64) *ObjString {
 	}
 }
 
-func (h *Table) markTable() {
+func (h *Table) Mark() {
 	for i := range h.entries {
 		el := &h.entries[i]
 		MarkObject(el.key)

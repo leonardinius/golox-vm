@@ -24,6 +24,7 @@ const (
 	ObjTypeClosure
 	ObjTypeUpvalue
 	ObjTypeClass
+	ObjTypeInstance
 )
 
 var gObjTypeStrings = map[ObjType]string{
@@ -33,6 +34,7 @@ var gObjTypeStrings = map[ObjType]string{
 	ObjTypeClosure:  "OBJ_CLOSURE",
 	ObjTypeUpvalue:  "OBJ_UPVALUE",
 	ObjTypeClass:    "OBJ_CLASS",
+	ObjTypeInstance: "OBJ_INSTANCE",
 }
 
 // String implements fmt.Stringer.
@@ -51,7 +53,8 @@ type VMObjectable interface {
 		ObjNative |
 		ObjClosure |
 		ObjUpvalue |
-		ObjClass
+		ObjClass |
+		ObjInstance
 }
 
 var (
@@ -62,6 +65,7 @@ var (
 	gObjClosureSize  = int(unsafe.Sizeof(ObjClosure{}))
 	gObjUpvalueSize  = int(unsafe.Sizeof(ObjUpvalue{}))
 	gObjClassSize    = int(unsafe.Sizeof(ObjClass{}))
+	gObjInstanceSize = int(unsafe.Sizeof(ObjInstance{}))
 )
 
 type Obj struct {
@@ -168,6 +172,19 @@ func NewClass(name *ObjString) *ObjClass {
 	return obj
 }
 
+type ObjInstance struct {
+	Obj
+	Klass  *ObjClass
+	Fields Table
+}
+
+func NewInstance(class *ObjClass) *ObjInstance {
+	obj := allocateObject[ObjInstance](ObjTypeInstance, gObjInstanceSize)
+	obj.Klass = class
+	obj.Fields = NewHashtable()
+	return obj
+}
+
 func InitObjects() {
 	GRoots = nil
 	gcTrace = gcTraceStack{}
@@ -186,21 +203,21 @@ func FreeObjects() {
 func FreeObject(obj *Obj) {
 	switch obj.Type {
 	case ObjTypeString:
-		v := castObject[ObjString](obj)
 		debugPrintFreeObject(obj, gObjStringSize)
+		v := castObject[ObjString](obj)
 		v.Chars = vmmem.FreeSlice(v.Chars)
 		vmmem.TriggerGC(gObjStringSize, 1, 0)
 	case ObjTypeFunction:
-		v := castObject[ObjFunction](obj)
 		debugPrintFreeObject(obj, gObjFunctionSize)
+		v := castObject[ObjFunction](obj)
 		v.ChunkFreeFn()
 		vmmem.TriggerGC(gObjFunctionSize, 1, 0)
 	case ObjTypeNative:
 		debugPrintFreeObject(obj, gObjNativeSize)
 		vmmem.TriggerGC(gObjNativeSize, 1, 0)
 	case ObjTypeClosure:
-		v := castObject[ObjClosure](obj)
 		debugPrintFreeObject(obj, gObjClosureSize)
+		v := castObject[ObjClosure](obj)
 		v.Upvalues = vmmem.FreeSlice(v.Upvalues)
 		vmmem.TriggerGC(gObjClosureSize, 1, 0)
 	case ObjTypeUpvalue:
@@ -208,6 +225,11 @@ func FreeObject(obj *Obj) {
 		vmmem.TriggerGC(gObjUpvalueSize, 1, 0)
 	case ObjTypeClass:
 		debugPrintFreeObject(obj, gObjClassSize)
+		vmmem.TriggerGC(gObjClassSize, 1, 0)
+	case ObjTypeInstance:
+		debugPrintFreeObject(obj, gObjInstanceSize)
+		v := castObject[ObjInstance](obj)
+		v.Fields.Free()
 		vmmem.TriggerGC(gObjClassSize, 1, 0)
 	default:
 		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
@@ -236,6 +258,9 @@ func PrintObject(obj *Obj) {
 	case ObjTypeClass:
 		v := castObject[ObjClass](obj)
 		printString(v.Name)
+	case ObjTypeInstance:
+		v := castObject[ObjInstance](obj)
+		printfString("%s instance", v.Klass.Name)
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}
@@ -247,8 +272,11 @@ func printFunction(f *ObjFunction) {
 		return
 	}
 
-	name := string(f.Name.Chars)
-	fmt.Print("<fn " + name + ">")
+	printfString("<fn %s>", f.Name)
+}
+
+func printfString(message string, s *ObjString) {
+	fmt.Printf(message, string(s.Chars))
 }
 
 func printString(s *ObjString) {
@@ -337,6 +365,10 @@ func blackenObject(obj *Obj) {
 	case ObjTypeClass:
 		v := castObject[ObjClass](obj)
 		MarkObject(v.Name)
+	case ObjTypeInstance:
+		v := castObject[ObjInstance](obj)
+		MarkObject(v.Klass)
+		v.Fields.Mark()
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}

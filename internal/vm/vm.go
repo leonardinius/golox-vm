@@ -137,6 +137,7 @@ func SetStackAt(at int, v vmvalue.Value) {
 }
 
 func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
+	iArgs := int(argCount)
 	if vmvalue.IsObj(callee) {
 		switch vmvalue.ObjTypeTag(callee) {
 		case vmvalue.ObjTypeClosure:
@@ -148,7 +149,6 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 					native.Arity, argCount)
 			}
 
-			iArgs := int(argCount)
 			args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
 			value, err := native.Fn(args...)
 			if err != nil {
@@ -156,6 +156,11 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 			}
 			GlobalVM.StackTop -= iArgs + 1
 			Push(value)
+			return true
+		case vmvalue.ObjTypeClass:
+			klass := vmvalue.ValueAsClass(callee)
+			instance := vmvalue.ObjAsValue(vmvalue.NewInstance(klass))
+			GlobalVM.Stack[GlobalVM.StackTop-iArgs-1] = instance
 			return true
 		}
 	}

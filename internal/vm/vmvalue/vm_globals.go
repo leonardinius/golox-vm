@@ -11,7 +11,7 @@ func FreeGlobals() {
 }
 
 func MarkGlobals() {
-	gGlobalEnv.markTable()
+	gGlobalEnv.Mark()
 }
 
 func SetGlobal(name *ObjString, value Value) bool {
