@@ -142,6 +142,10 @@ func IsClosure(v Value) bool {
 	return isObjType(v, ObjTypeClosure)
 }
 
+func IsClass(v Value) bool {
+	return isObjType(v, ObjTypeClass)
+}
+
 func ValueAsString(v Value) *ObjString {
 	return valueAsObj[ObjString](v)
 }
@@ -160,6 +164,10 @@ func ValueAsNativeFn(v Value) *ObjNative {
 
 func ValueAsClosure(v Value) *ObjClosure {
 	return valueAsObj[ObjClosure](v)
+}
+
+func ValueAsClass(v Value) *ObjClass {
+	return valueAsObj[ObjClass](v)
 }
 
 func MarkValue(v Value) {
