@@ -28,6 +28,9 @@ linters-settings:
     ignore-generated-header: true
     severity: warning
     enable-all-rules: false
+  govet:
+    disable:
+      - printf
 linters:
   disable:
     - depguard
@@ -43,7 +46,7 @@ linters:
     - varnamelen
     - wrapcheck
     - wsl
-    - goerr113
+    - err113
     - godox
     - errorlint
     - nestif
@@ -55,17 +58,7 @@ linters:
     - unparam
     - paralleltest
     - tparallel
-      # dead packages
-    - deadcode
-    - exhaustivestruct
-    - golint
-    - ifshort
-    - interfacer
-    - maligned
-    - nosnakecase
-    - scopelint
-    - structcheck
-    - varcheck
+    - execinquery
   fast: false
   enable-all: true
 

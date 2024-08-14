@@ -15,10 +15,17 @@
 #
 #############################################################################################################
 .DELETE_ON_ERROR:
+# TOOLS
+GOLANGCILINT_VERSION = v1.60.1
+GOFUMPT_VERSION		 = v0.6.0
+GOTESTSUM_VERSION    = v1.12.0
+# Shell
 .SHELLFLAGS 	:= -eu -o pipefail -c
 SHELL			= /bin/bash
+# OUT(s)
 BIN 			:= .bin
 BUILDOUT		= ./bin
+# BUILD FLAGS
 MAKEFLAGS 		+= --warn-undefined-variables
 MAKEFLAGS 		+= --no-builtin-rules
 MAKEFLAGS		+= --no-print-directory
@@ -116,12 +123,12 @@ go/debug: ### Build
 # TOOLS
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCILINT_VERSION)
 
 $(BIN)/gofumpt: Makefile
 	@mkdir -p $(@D)
-	go install mvdan.cc/gofumpt@v0.6.0
+	go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION)
 
 $(BIN)/gotestsum: Makefile
 	@mkdir -p $(@D)
-	go install gotest.tools/gotestsum@v1.11.0
+	go install gotest.tools/gotestsum@$(GOTESTSUM_VERSION)
