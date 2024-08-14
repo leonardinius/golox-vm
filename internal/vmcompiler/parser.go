@@ -283,6 +283,18 @@ func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 	}
 }
 
+func classDeclaration() {
+	consume(tokens.TokenIdentifier, "Expect class name.")
+	nameConstant := identifierConstant(&gParser.previous)
+	declareVariable()
+
+	emitOpByte(bytecode.OpClass, byte(nameConstant))
+	defineVariable(nameConstant)
+
+	consume(tokens.TokenLeftBrace, "Expect '{' before class body.")
+	consume(tokens.TokenRightBrace, "Expect '}' after class body.")
+}
+
 func funDeclaration() {
 	global := parseVariable("Expect function name.")
 	markInitialized()
@@ -350,6 +362,8 @@ func synchronize() {
 
 func declaration() {
 	switch {
+	case match(tokens.TokenClass):
+		classDeclaration()
 	case match(tokens.TokenFun):
 		funDeclaration()
 	case match(tokens.TokenVar):

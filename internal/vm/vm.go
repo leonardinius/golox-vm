@@ -315,6 +315,10 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 			name := readString(frame, chunk)
 			SetGlobal(name, Peek(0))
 			Pop()
+		case bytecode.OpClass:
+			name := readString(frame, chunk)
+			class := vmvalue.NewClass(name)
+			Push(vmvalue.ObjAsValue(class))
 		case bytecode.OpJump:
 			offset := readShort(frame, chunk)
 			frame.IP += int(offset)
