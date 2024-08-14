@@ -23,8 +23,9 @@ type FunctionType int
 
 const (
 	_ FunctionType = iota
-	FunctionTypeFunction
 	FunctionTypeScript
+	FunctionTypeFunction
+	FunctionTypeMethod
 )
 
 type Compiler struct {

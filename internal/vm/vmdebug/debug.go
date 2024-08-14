@@ -47,7 +47,8 @@ func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 		bytecode.OpDefineGlobal,
 		bytecode.OpClass,
 		bytecode.OpGetProperty,
-		bytecode.OpSetProperty:
+		bytecode.OpSetProperty,
+		bytecode.OpMethod:
 		return constantInstruction(instruction, chunk, offset)
 	case bytecode.OpClosure:
 		return closureInstruction(instruction, chunk, offset)

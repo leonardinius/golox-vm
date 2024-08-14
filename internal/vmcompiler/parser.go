@@ -282,16 +282,29 @@ func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 	}
 }
 
+func method() {
+	consume(tokens.TokenIdentifier, "Expect method name.")
+	name := identifierConstant(&gParser.previous)
+	function(FunctionTypeMethod, nil)
+	emitOpByte(bytecode.OpMethod, byte(name))
+}
+
 func classDeclaration() {
 	consume(tokens.TokenIdentifier, "Expect class name.")
-	nameConstant := identifierConstant(&gParser.previous)
+	classNameToken := gParser.previous
+	nameConstant := identifierConstant(&classNameToken)
 	declareVariable()
 
 	emitOpByte(bytecode.OpClass, byte(nameConstant))
 	defineVariable(nameConstant)
 
+	namedVariable(classNameToken, false)
 	consume(tokens.TokenLeftBrace, "Expect '{' before class body.")
+	for !check(tokens.TokenRightBrace) && !check(tokens.TokenEOF) {
+		method()
+	}
 	consume(tokens.TokenRightBrace, "Expect '}' after class body.")
+	emitOpcode(bytecode.OpPop)
 }
 
 func funDeclaration() {
@@ -512,8 +525,7 @@ func string_(ParsePrecedence) {
 	emitConstant(vmvalue.ObjAsValue(str))
 }
 
-func namedVariable(name scanner.Token, precedence ParsePrecedence) {
-	canAssign := precedence.CanAssign()
+func namedVariable(name scanner.Token, canAssign bool) {
 	var getOp, setOp bytecode.OpCode
 
 	arg, ok := resolveLocal(gCurrent, &name)
@@ -538,7 +550,7 @@ func namedVariable(name scanner.Token, precedence ParsePrecedence) {
 }
 
 func variable(precedence ParsePrecedence) {
-	namedVariable(gParser.previous, precedence)
+	namedVariable(gParser.previous, precedence.CanAssign())
 }
 
 func grouping(ParsePrecedence) {

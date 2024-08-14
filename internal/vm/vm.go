@@ -137,7 +137,6 @@ func SetStackAt(at int, v vmvalue.Value) {
 }
 
 func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
-	iArgs := int(argCount)
 	if vmvalue.IsObj(callee) {
 		switch vmvalue.ObjTypeTag(callee) {
 		case vmvalue.ObjTypeClosure:
@@ -149,6 +148,7 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 					native.Arity, argCount)
 			}
 
+			iArgs := int(argCount)
 			args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
 			value, err := native.Fn(args...)
 			if err != nil {
@@ -160,8 +160,12 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 		case vmvalue.ObjTypeClass:
 			klass := vmvalue.ValueAsClass(callee)
 			instance := vmvalue.ObjAsValue(vmvalue.NewInstance(klass))
+			iArgs := int(argCount)
 			GlobalVM.Stack[GlobalVM.StackTop-iArgs-1] = instance
 			return true
+		case vmvalue.ObjTypeBoundMethod:
+			bound := vmvalue.ValueAsBoundMethod(callee)
+			return Call(bound.Method, argCount)
 		}
 	}
 
@@ -203,6 +207,25 @@ func CloseUpvalues(at int) {
 		upvalue.Location = &upvalue.Closed
 		GlobalVM.OpenUpvalues = upvalue.Next
 	}
+}
+
+func DefineMethod(name *vmvalue.ObjString) {
+	method := Peek(0)
+	klass := vmvalue.ValueAsClass(Peek(1))
+	klass.Methods.Set(name, method)
+	Pop()
+}
+
+func BindMethod(klass *vmvalue.ObjClass, name *vmvalue.ObjString) (ok bool) {
+	var method vmvalue.Value
+	if method, ok = klass.Methods.Get(name); !ok {
+		return runtimeError("Undefined property '%s'.", string(name.Chars))
+	}
+
+	bound := vmvalue.NewBoundMethod(Peek(0), vmvalue.ValueAsClosure(method))
+	Pop()
+	Push(vmvalue.ObjAsValue(bound))
+	return true
 }
 
 func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
@@ -332,7 +355,8 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 				Push(value)
 				break
 			}
-			ok = runtimeError("Undefined property '%s'.", string(name.Chars))
+
+			ok = BindMethod(instance.Klass, name)
 		case bytecode.OpSetProperty:
 			if !vmvalue.IsInstance(Peek(1)) {
 				ok = runtimeError("Only instances have fields.")
@@ -348,6 +372,8 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 			name := readString(frame, chunk)
 			class := vmvalue.NewClass(name)
 			Push(vmvalue.ObjAsValue(class))
+		case bytecode.OpMethod:
+			DefineMethod(readString(frame, chunk))
 		case bytecode.OpJump:
 			offset := readShort(frame, chunk)
 			frame.IP += int(offset)

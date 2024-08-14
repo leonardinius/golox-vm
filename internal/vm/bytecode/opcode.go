@@ -37,6 +37,7 @@ const (
 	OpClass
 	OpSetProperty
 	OpGetProperty
+	OpMethod
 	OpReturn
 )
 
@@ -73,6 +74,7 @@ var gOpCodeStrings = map[OpCode]string{
 	OpReturn:       "OP_RETURN",
 	OpSetProperty:  "OP_SET_PROPERTY",
 	OpGetProperty:  "OP_GET_PROPERTY",
+	OpMethod:       "OP_METHOD",
 }
 
 func (op OpCode) String() string {
