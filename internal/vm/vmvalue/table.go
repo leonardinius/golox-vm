@@ -1,11 +1,9 @@
-package hashtable
+package vmvalue
 
 import (
 	"bytes"
 
-	"github.com/leonardinius/goloxvm/internal/vm/vmdebug"
 	"github.com/leonardinius/goloxvm/internal/vm/vmmem"
-	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
 const TableMaxLoad float64 = 0.75
@@ -16,8 +14,8 @@ type Table struct {
 }
 
 type entry struct {
-	key   *vmvalue.ObjString
-	value vmvalue.Value
+	key   *ObjString
+	value Value
 }
 
 func NewHashtable() Table {
@@ -37,8 +35,8 @@ func (h *Table) Free() {
 }
 
 func (h *Table) Set(
-	key *vmvalue.ObjString,
-	value vmvalue.Value,
+	key *ObjString,
+	value Value,
 ) bool {
 	loadLimit := int(float64(len(h.entries)) * TableMaxLoad)
 	if h.count+1 > loadLimit {
@@ -52,7 +50,7 @@ func (h *Table) Set(
 		isNewKey = true
 	}
 
-	if isNewKey && vmvalue.IsNil(entry.value) {
+	if isNewKey && IsNil(entry.value) {
 		h.count++
 	}
 	entry.key = key
@@ -60,7 +58,7 @@ func (h *Table) Set(
 	return isNewKey
 }
 
-func (h *Table) findEntry(entries []entry, key *vmvalue.ObjString) *entry {
+func (h *Table) findEntry(entries []entry, key *ObjString) *entry {
 	capacity := uint64(len(entries))
 	debugAssertIsPowerOfTwo(capacity)
 	mask := capacity - 1
@@ -70,7 +68,7 @@ func (h *Table) findEntry(entries []entry, key *vmvalue.ObjString) *entry {
 	for {
 		el := &entries[index]
 		if el.key == nil {
-			if vmvalue.IsNil(el.value) {
+			if IsNil(el.value) {
 				if tombstone != nil {
 					return tombstone
 				}
@@ -90,7 +88,7 @@ func (h *Table) adjustCapacity(capacity int) {
 	for i := range entries {
 		el := &entries[i]
 		el.key = nil
-		el.value = vmvalue.NilValue
+		el.value = NilValue
 	}
 
 	h.count = 0
@@ -119,19 +117,19 @@ func (h *Table) PutAll(from *Table) {
 	}
 }
 
-func (h *Table) Get(key *vmvalue.ObjString) (vmvalue.Value, bool) {
+func (h *Table) Get(key *ObjString) (Value, bool) {
 	if h.count == 0 {
-		return vmvalue.NilValue, false
+		return NilValue, false
 	}
 
 	if el := h.findEntry(h.entries, key); el.key != nil {
 		return el.value, true
 	}
 
-	return vmvalue.NilValue, false
+	return NilValue, false
 }
 
-func (h *Table) Delete(key *vmvalue.ObjString) bool {
+func (h *Table) Delete(key *ObjString) bool {
 	if h.count == 0 {
 		return false
 	}
@@ -142,12 +140,12 @@ func (h *Table) Delete(key *vmvalue.ObjString) bool {
 	}
 
 	el.key = nil
-	el.value = vmvalue.BoolAsValue(true)
+	el.value = BoolAsValue(true)
 	// h.count should stay same
 	return true
 }
 
-func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
+func (h *Table) findString(chars []byte, hash uint64) *ObjString {
 	if h.count == 0 {
 		return nil
 	}
@@ -160,7 +158,7 @@ func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 		el := &h.entries[index]
 		if el.key == nil {
 			// Stop if we find an empty non-tombstone entry.
-			if vmvalue.IsNil(el.value) {
+			if IsNil(el.value) {
 				return nil
 			}
 		} else if hash == el.key.Hash &&
@@ -175,8 +173,8 @@ func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 func (h *Table) markTable() {
 	for i := range h.entries {
 		el := &h.entries[i]
-		vmvalue.MarkObject(el.key)
-		vmvalue.MarkValue(el.value)
+		MarkObject(el.key)
+		MarkValue(el.value)
 	}
 }
 
@@ -190,5 +188,5 @@ func (h *Table) removeWhiteKeys() {
 }
 
 func debugAssertIsPowerOfTwo(n uint64) {
-	vmdebug.Assertf(n != 0 && (n&(n-1)) == 0, "capacity must be power of 2 (%d)", n)
+	debugAssertf(n != 0 && (n&(n-1)) == 0, "capacity must be power of 2 (%d)", n)
 }

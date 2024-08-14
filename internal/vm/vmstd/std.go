@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 )
 
@@ -23,6 +22,6 @@ func StdFormatNumber(value vmvalue.Value) (vmvalue.Value, error) {
 
 	number := vmvalue.ValueAsNumber(value)
 	str := fmt.Sprintf("%#v", number)
-	obj := hashtable.StringInternCopy([]byte(str))
+	obj := vmvalue.StringInternCopy([]byte(str))
 	return vmvalue.ObjAsValue(obj), nil
 }

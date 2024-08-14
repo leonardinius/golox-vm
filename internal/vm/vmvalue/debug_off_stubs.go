@@ -2,6 +2,8 @@
 
 package vmvalue
 
+func debugAssertf(condition bool, message string, args ...any) {}
+
 func debugPrintFreeObject(header *Obj, size int) {}
 
 func debugPrintAllocateObject(header *Obj, size int) {}

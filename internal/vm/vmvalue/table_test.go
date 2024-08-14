@@ -1,4 +1,4 @@
-package hashtable_test
+package vmvalue_test
 
 import (
 	"strconv"
@@ -6,14 +6,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 
 	_ "github.com/leonardinius/goloxvm/internal/tests"
 )
 
 func TestBasicOps(t *testing.T) {
-	h := hashtable.NewHashtable()
+	h := vmvalue.NewHashtable()
 	t.Cleanup(h.Free)
 
 	chars1 := []byte("s1")
@@ -50,7 +49,7 @@ func TestBasicOps(t *testing.T) {
 }
 
 func TestAdjustSize(t *testing.T) {
-	h := hashtable.NewHashtable()
+	h := vmvalue.NewHashtable()
 	t.Cleanup(h.Free)
 
 	m := make(map[int]*vmvalue.ObjString)

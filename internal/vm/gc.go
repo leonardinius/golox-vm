@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler"
 )
@@ -26,7 +25,7 @@ func markRoots() {
 		vmvalue.MarkObject(upvalue)
 	}
 
-	hashtable.MarkGlobals()
+	vmvalue.MarkGlobals()
 
 	vmcompiler.MarkCompilerRoots()
 }
@@ -36,7 +35,7 @@ func traceReferences() {
 }
 
 func tableRemoveWhiteInternStrings() {
-	hashtable.RemoveWhiteInternStrings()
+	vmvalue.RemoveWhiteInternStrings()
 }
 
 func sweep() {

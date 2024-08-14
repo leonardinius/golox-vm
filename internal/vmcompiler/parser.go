@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/leonardinius/goloxvm/internal/vm/bytecode"
-	"github.com/leonardinius/goloxvm/internal/vm/hashtable"
 	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/scanner"
 	"github.com/leonardinius/goloxvm/internal/vmcompiler/tokens"
@@ -97,7 +96,7 @@ func parsePrecedence(precedence ParsePrecedence) {
 }
 
 func identifierConstant(token *scanner.Token) int {
-	identifier := hashtable.StringInternCopy(token.Lexeme())
+	identifier := vmvalue.StringInternCopy(token.Lexeme())
 	value := vmvalue.ObjAsValue(identifier)
 	return makeConstant(value)
 }
@@ -298,7 +297,7 @@ func classDeclaration() {
 func funDeclaration() {
 	global := parseVariable("Expect function name.")
 	markInitialized()
-	function(FunctionTypeFunction, hashtable.StringInternTake(gParser.previous.Lexeme()))
+	function(FunctionTypeFunction, vmvalue.StringInternTake(gParser.previous.Lexeme()))
 	defineVariable(global)
 }
 
@@ -509,7 +508,7 @@ func number(ParsePrecedence) {
 func string_(ParsePrecedence) {
 	t := gParser.previous
 	chars := t.Source[t.Start+1 : t.Start+t.Length-1]
-	str := hashtable.StringInternCopy(chars)
+	str := vmvalue.StringInternCopy(chars)
 	emitConstant(vmvalue.ObjAsValue(str))
 }
 

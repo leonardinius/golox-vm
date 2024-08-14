@@ -1,8 +1,4 @@
-package hashtable
-
-import (
-	"github.com/leonardinius/goloxvm/internal/vm/vmvalue"
-)
+package vmvalue
 
 var gGlobalEnv Table
 
@@ -18,14 +14,14 @@ func MarkGlobals() {
 	gGlobalEnv.markTable()
 }
 
-func SetGlobal(name *vmvalue.ObjString, value vmvalue.Value) bool {
+func SetGlobal(name *ObjString, value Value) bool {
 	return gGlobalEnv.Set(name, value)
 }
 
-func GetGlobal(name *vmvalue.ObjString) (vmvalue.Value, bool) {
+func GetGlobal(name *ObjString) (Value, bool) {
 	return gGlobalEnv.Get(name)
 }
 
-func DeleteGlobal(name *vmvalue.ObjString) bool {
+func DeleteGlobal(name *ObjString) bool {
 	return gGlobalEnv.Delete(name)
 }
