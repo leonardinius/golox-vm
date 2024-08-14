@@ -67,7 +67,8 @@ func InitVM() {
 	hashtable.InitInternStrings()
 	hashtable.InitGlobals()
 	vmvalue.InitObjects()
-	defineNative("clock", vmstd.StdClockNative, 0)
+	defineNative0("clock", vmstd.StdClockNative)
+	defineNative1("formatNumber", vmstd.StdFormatNumber)
 	resetStack()
 }
 
@@ -508,7 +509,19 @@ func PrintlnValue(v vmvalue.Value) {
 	vmvalue.PrintlnValue(v)
 }
 
-func defineNative(name string, fn vmvalue.NativeFn, arity byte) {
+func defineNative0(name string, fn func() (vmvalue.Value, error)) {
+	defineNative(name, 0, func(args ...vmvalue.Value) (vmvalue.Value, error) {
+		return fn()
+	})
+}
+
+func defineNative1(name string, fn func(vmvalue.Value) (vmvalue.Value, error)) {
+	defineNative(name, 1, func(args ...vmvalue.Value) (vmvalue.Value, error) {
+		return fn(args[0])
+	})
+}
+
+func defineNative(name string, arity byte, fn vmvalue.NativeFn) {
 	nameObj := hashtable.StringInternCopy([]byte(name))
 	nameValue := vmvalue.ObjAsValue(nameObj)
 	Push(nameValue)

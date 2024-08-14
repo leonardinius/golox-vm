@@ -36,10 +36,6 @@ func (h *Table) Free() {
 	h.reset()
 }
 
-func (h *Table) Count() int {
-	return h.count
-}
-
 func (h *Table) Set(
 	key *vmvalue.ObjString,
 	value vmvalue.Value,
@@ -70,6 +66,7 @@ func (h *Table) findEntry(entries []entry, key *vmvalue.ObjString) *entry {
 	mask := capacity - 1
 	index := key.Hash & mask
 	var tombstone *entry = nil
+
 	for {
 		el := &entries[index]
 		if el.key == nil {
@@ -146,7 +143,7 @@ func (h *Table) Delete(key *vmvalue.ObjString) bool {
 
 	el.key = nil
 	el.value = vmvalue.BoolAsValue(true)
-	h.count--
+	// h.count should stay same
 	return true
 }
 
@@ -156,17 +153,19 @@ func (h *Table) findString(chars []byte, hash uint64) *vmvalue.ObjString {
 	}
 
 	capacity := uint64(len(h.entries))
-
+	debugAssertIsPowerOfTwo(capacity)
 	mask := capacity - 1
 	index := hash & mask
 	for {
 		el := &h.entries[index]
-
-		if el.key == nil && vmvalue.IsNil(el.value) {
-			return nil
-		} else if el.key != nil &&
-			hash == el.key.Hash &&
+		if el.key == nil {
+			// Stop if we find an empty non-tombstone entry.
+			if vmvalue.IsNil(el.value) {
+				return nil
+			}
+		} else if hash == el.key.Hash &&
 			bytes.Equal(chars, el.key.Chars) {
+			// we found it
 			return el.key
 		}
 		index = (index + 1) & mask

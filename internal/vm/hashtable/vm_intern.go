@@ -7,7 +7,7 @@ import (
 
 var gInternStrings Table
 
-const marker = vmvalue.NilValue
+const internMarkerValue = vmvalue.NilValue
 
 func InitInternStrings() {
 	gInternStrings = NewHashtable()
@@ -27,7 +27,7 @@ func StringInternTake(chars []byte) *vmvalue.ObjString {
 	str := vmvalue.NewTakeString(chars, hash)
 	vmmem.PushRetainGC(uint64(vmvalue.ObjAsValue(str)))
 	defer vmmem.PopReleaseGC()
-	gInternStrings.Set(str, marker)
+	gInternStrings.Set(str, internMarkerValue)
 	return str
 }
 
@@ -41,7 +41,7 @@ func StringInternCopy(chars []byte) *vmvalue.ObjString {
 	str := vmvalue.NewCopyString(chars, hash)
 	vmmem.PushRetainGC(vmvalue.ValueAsNanBoxed(vmvalue.ObjAsValue(str)))
 	defer vmmem.PopReleaseGC()
-	gInternStrings.Set(str, marker)
+	gInternStrings.Set(str, internMarkerValue)
 	return str
 }
 
