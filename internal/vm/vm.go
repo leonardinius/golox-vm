@@ -33,6 +33,7 @@ type VM struct {
 	Stack        [MaxStackCount]vmvalue.Value
 	StackTop     int
 	OpenUpvalues *vmvalue.ObjUpvalue
+	InitString   *vmvalue.ObjString
 }
 
 var GlobalVM VM
@@ -66,6 +67,7 @@ func InitVM() {
 	vmvalue.InitInternStrings()
 	vmvalue.InitGlobals()
 	vmvalue.InitObjects()
+	GlobalVM.InitString = vmvalue.StringInternCopy([]byte("init"))
 	defineNative0("clock", vmstd.StdClockNative)
 	defineNative1("formatNumber", vmstd.StdFormatNumber)
 	resetStack()
@@ -74,6 +76,7 @@ func InitVM() {
 func FreeVM() {
 	vmvalue.FreeGlobals()
 	vmvalue.FreeInternStrings()
+	GlobalVM.InitString = nil
 	vmvalue.FreeObjects()
 	resetStack()
 }
@@ -143,25 +146,17 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 			return Call(vmvalue.ValueAsClosure(callee), argCount)
 		case vmvalue.ObjTypeNative:
 			native := vmvalue.ValueAsNativeFn(callee)
-			if argCount != native.Arity {
-				return runtimeError("Expected %d arguments but got %d.",
-					native.Arity, argCount)
-			}
-
-			iArgs := int(argCount)
-			args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
-			value, err := native.Fn(args...)
-			if err != nil {
-				return runtimeError(fmt.Sprintf("native: %#v", err))
-			}
-			GlobalVM.StackTop -= iArgs + 1
-			Push(value)
-			return true
+			return CallNative(native, argCount)
 		case vmvalue.ObjTypeClass:
 			klass := vmvalue.ValueAsClass(callee)
 			instance := vmvalue.ObjAsValue(vmvalue.NewInstance(klass))
 			iArgs := int(argCount)
 			GlobalVM.Stack[GlobalVM.StackTop-iArgs-1] = instance
+			if init, found := klass.Methods.Get(GlobalVM.InitString); found {
+				return Call(vmvalue.ValueAsClosure(init), argCount)
+			} else if argCount != 0 {
+				return runtimeError("Expected 0 arguments but got %d.", argCount)
+			}
 			return true
 		case vmvalue.ObjTypeBoundMethod:
 			bound := vmvalue.ValueAsBoundMethod(callee)
@@ -246,6 +241,22 @@ func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
 	frame.Closure = closure
 	frame.IP = 0
 	frame.SlotsTop = GlobalVM.StackTop - iArgs - 1
+	return true
+}
+
+func CallNative(native *vmvalue.ObjNative, argCount byte) (ok bool) {
+	if argCount != native.Arity {
+		return runtimeError("Expected %d arguments but got %d.",
+			native.Arity, argCount)
+	}
+	iArgs := int(argCount)
+	args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
+	value, err := native.Fn(args...)
+	if err != nil {
+		return runtimeError(fmt.Sprintf("native: %#v", err))
+	}
+	GlobalVM.StackTop -= iArgs + 1
+	Push(value)
 	return true
 }
 

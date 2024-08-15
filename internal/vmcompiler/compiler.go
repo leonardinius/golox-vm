@@ -26,6 +26,7 @@ const (
 	FunctionTypeScript
 	FunctionTypeFunction
 	FunctionTypeMethod
+	FunctionTypeInitializer
 )
 
 type Compiler struct {
@@ -73,15 +74,16 @@ func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) *Compiler {
 	compiler.Enclosing = gCurrent
 	gCurrent = &compiler
 
+	compiler.LocalCount = 0
 	local := &compiler.Locals[compiler.LocalCount]
 	compiler.LocalCount++
 	local.Depth = 0
-	if fnType == FunctionTypeMethod {
+	local.IsCaptured = false
+	if fnType != FunctionTypeFunction {
 		local.SetName("this")
 	} else {
 		local.SetName("")
 	}
-	local.IsCaptured = false
 	return &compiler
 }
 
@@ -174,7 +176,11 @@ func makeConstant(v vmvalue.Value) int {
 }
 
 func emitReturn() {
-	emitOpcode(bytecode.OpNil)
+	if gCurrent.FnType == FunctionTypeInitializer {
+		emitOpByte(bytecode.OpGetLocal, 0)
+	} else {
+		emitOpcode(bytecode.OpNil)
+	}
 	emitOpcode(bytecode.OpReturn)
 }
 

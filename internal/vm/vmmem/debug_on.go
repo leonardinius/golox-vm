@@ -14,5 +14,5 @@ func debugPrintlf(message string, args ...any) {
 }
 
 func debugStressGC() {
-	CollectGarbage()
+	// CollectGarbage()
 }

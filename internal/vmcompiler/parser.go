@@ -285,7 +285,14 @@ func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 func method() {
 	consume(tokens.TokenIdentifier, "Expect method name.")
 	name := identifierConstant(&gParser.previous)
-	function(FunctionTypeMethod, nil)
+
+	fnType := FunctionTypeMethod
+	if gParser.previous.Length == 4 &&
+		gParser.previous.LexemeAsString() == "init" {
+		fnType = FunctionTypeInitializer
+	}
+	function(fnType, nil)
+
 	emitOpByte(bytecode.OpMethod, byte(name))
 }
 
@@ -297,9 +304,7 @@ func classDeclaration() {
 
 	emitOpByte(bytecode.OpClass, byte(nameConstant))
 	defineVariable(nameConstant)
-	classCompiler := ClassCompiler{
-		Enclosing: gCurrentClass,
-	}
+	classCompiler := ClassCompiler{Enclosing: gCurrentClass}
 	gCurrentClass = &classCompiler
 
 	namedVariable(classNameToken, false)
@@ -346,6 +351,10 @@ func returnStatement() {
 	if match(tokens.TokenSemicolon) {
 		emitReturn()
 	} else {
+		if gCurrent.FnType == FunctionTypeInitializer {
+			errorAtPrev("Can't return a value from an initializer.")
+		}
+
 		expression()
 		consume(tokens.TokenSemicolon, "Expect ';' after return value.")
 		emitOpcode(bytecode.OpReturn)
