@@ -5,7 +5,8 @@ import (
 )
 
 var (
-	gScanner scanner.Scanner
-	gParser  Parser
-	gCurrent *Compiler = nil
+	gScanner      scanner.Scanner
+	gParser       Parser
+	gCurrent      *Compiler      = nil
+	gCurrentClass *ClassCompiler = nil
 )

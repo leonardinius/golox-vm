@@ -297,6 +297,10 @@ func classDeclaration() {
 
 	emitOpByte(bytecode.OpClass, byte(nameConstant))
 	defineVariable(nameConstant)
+	classCompiler := ClassCompiler{
+		Enclosing: gCurrentClass,
+	}
+	gCurrentClass = &classCompiler
 
 	namedVariable(classNameToken, false)
 	consume(tokens.TokenLeftBrace, "Expect '{' before class body.")
@@ -305,6 +309,7 @@ func classDeclaration() {
 	}
 	consume(tokens.TokenRightBrace, "Expect '}' after class body.")
 	emitOpcode(bytecode.OpPop)
+	gCurrentClass = gCurrentClass.Enclosing
 }
 
 func funDeclaration() {
@@ -553,6 +558,14 @@ func variable(precedence ParsePrecedence) {
 	namedVariable(gParser.previous, precedence.CanAssign())
 }
 
+func this(ParsePrecedence) {
+	if gCurrentClass == nil {
+		errorAtPrev("Can't use 'this' outside of a class.")
+		return
+	}
+	namedVariable(gParser.previous, false)
+}
+
 func grouping(ParsePrecedence) {
 	expression()
 	consume(tokens.TokenRightParen, "Expect ')' after expression.")
@@ -751,7 +764,7 @@ func init() {
 		tokens.TokenPrint:        {nil, nil, PrecedenceNone},
 		tokens.TokenReturn:       {nil, nil, PrecedenceNone},
 		tokens.TokenSuper:        {nil, nil, PrecedenceNone},
-		tokens.TokenThis:         {nil, nil, PrecedenceNone},
+		tokens.TokenThis:         {this, nil, PrecedenceNone},
 		tokens.TokenTrue:         {literal, nil, PrecedenceNone},
 		tokens.TokenVar:          {nil, nil, PrecedenceNone},
 		tokens.TokenWhile:        {nil, nil, PrecedenceNone},

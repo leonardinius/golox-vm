@@ -42,6 +42,10 @@ type Compiler struct {
 	Enclosing *Compiler
 }
 
+type ClassCompiler struct {
+	Enclosing *ClassCompiler
+}
+
 type Local struct {
 	Name       scanner.Token
 	Depth      int
@@ -72,7 +76,11 @@ func NewCompiler(fnType FunctionType, fnName *vmvalue.ObjString) *Compiler {
 	local := &compiler.Locals[compiler.LocalCount]
 	compiler.LocalCount++
 	local.Depth = 0
-	local.SetName("")
+	if fnType == FunctionTypeMethod {
+		local.SetName("this")
+	} else {
+		local.SetName("")
+	}
 	local.IsCaptured = false
 	return &compiler
 }

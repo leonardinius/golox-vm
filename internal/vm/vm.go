@@ -165,6 +165,8 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 			return true
 		case vmvalue.ObjTypeBoundMethod:
 			bound := vmvalue.ValueAsBoundMethod(callee)
+			iArgs := int(argCount)
+			GlobalVM.Stack[GlobalVM.StackTop-iArgs-1] = bound.Receiver
 			return Call(bound.Method, argCount)
 		}
 	}
