@@ -291,7 +291,7 @@ func method() {
 		gParser.previous.LexemeAsString() == "init" {
 		fnType = FunctionTypeInitializer
 	}
-	function(fnType, nil)
+	function(fnType, vmvalue.StringInternTake(gParser.previous.Lexeme()))
 
 	emitOpByte(bytecode.OpMethod, byte(name))
 }
