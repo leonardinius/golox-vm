@@ -118,12 +118,18 @@ func ValueAsObj(v Value) *Obj {
 	return valueAsObj[Obj](v)
 }
 
-func ObjTypeTag(v Value) ObjType {
-	return ValueAsObj(v).Type
+func MarkValue(v Value) {
+	if IsObj(v) {
+		MarkObject(ValueAsObj(v))
+	}
 }
 
 func isObjType(v Value, objType ObjType) bool {
 	return IsObj(v) && ObjTypeTag(v) == objType
+}
+
+func ObjTypeTag(v Value) ObjType {
+	return ValueAsObj(v).Type
 }
 
 func IsString(v Value) bool {
@@ -148,6 +154,10 @@ func IsClass(v Value) bool {
 
 func IsInstance(v Value) bool {
 	return isObjType(v, ObjTypeInstance)
+}
+
+func IsBoundMethod(v Value) bool {
+	return isObjType(v, ObjTypeBoundMethod)
 }
 
 func ValueAsString(v Value) *ObjString {
@@ -178,8 +188,6 @@ func ValueAsInstance(v Value) *ObjInstance {
 	return valueAsObj[ObjInstance](v)
 }
 
-func MarkValue(v Value) {
-	if IsObj(v) {
-		MarkObject(ValueAsObj(v))
-	}
+func ValueAsBoundMethod(v Value) *ObjBoundMethod {
+	return valueAsObj[ObjBoundMethod](v)
 }

@@ -25,16 +25,18 @@ const (
 	ObjTypeUpvalue
 	ObjTypeClass
 	ObjTypeInstance
+	ObjTypeBoundMethod
 )
 
 var gObjTypeStrings = map[ObjType]string{
-	ObjTypeString:   "OBJ_STRING",
-	ObjTypeFunction: "OBJ_FUNCTION",
-	ObjTypeNative:   "OBJ_NATIVE",
-	ObjTypeClosure:  "OBJ_CLOSURE",
-	ObjTypeUpvalue:  "OBJ_UPVALUE",
-	ObjTypeClass:    "OBJ_CLASS",
-	ObjTypeInstance: "OBJ_INSTANCE",
+	ObjTypeString:      "OBJ_STRING",
+	ObjTypeFunction:    "OBJ_FUNCTION",
+	ObjTypeNative:      "OBJ_NATIVE",
+	ObjTypeClosure:     "OBJ_CLOSURE",
+	ObjTypeUpvalue:     "OBJ_UPVALUE",
+	ObjTypeClass:       "OBJ_CLASS",
+	ObjTypeInstance:    "OBJ_INSTANCE",
+	ObjTypeBoundMethod: "OBJ_METHOD",
 }
 
 // String implements fmt.Stringer.
@@ -54,18 +56,20 @@ type VMObjectable interface {
 		ObjClosure |
 		ObjUpvalue |
 		ObjClass |
-		ObjInstance
+		ObjInstance |
+		ObjBoundMethod
 }
 
 var (
-	_                = int(unsafe.Sizeof(Obj{}))
-	gObjStringSize   = int(unsafe.Sizeof(ObjString{}))
-	gObjFunctionSize = int(unsafe.Sizeof(ObjFunction{}))
-	gObjNativeSize   = int(unsafe.Sizeof(ObjNative{}))
-	gObjClosureSize  = int(unsafe.Sizeof(ObjClosure{}))
-	gObjUpvalueSize  = int(unsafe.Sizeof(ObjUpvalue{}))
-	gObjClassSize    = int(unsafe.Sizeof(ObjClass{}))
-	gObjInstanceSize = int(unsafe.Sizeof(ObjInstance{}))
+	_                   = int(unsafe.Sizeof(Obj{}))
+	gObjStringSize      = int(unsafe.Sizeof(ObjString{}))
+	gObjFunctionSize    = int(unsafe.Sizeof(ObjFunction{}))
+	gObjNativeSize      = int(unsafe.Sizeof(ObjNative{}))
+	gObjClosureSize     = int(unsafe.Sizeof(ObjClosure{}))
+	gObjUpvalueSize     = int(unsafe.Sizeof(ObjUpvalue{}))
+	gObjClassSize       = int(unsafe.Sizeof(ObjClass{}))
+	gObjInstanceSize    = int(unsafe.Sizeof(ObjInstance{}))
+	gObjBoundMethodSize = int(unsafe.Sizeof(ObjBoundMethod{}))
 )
 
 type Obj struct {
@@ -163,12 +167,14 @@ func NewUpvalue(slot *Value) *ObjUpvalue {
 
 type ObjClass struct {
 	Obj
-	Name *ObjString
+	Name    *ObjString
+	Methods Table
 }
 
 func NewClass(name *ObjString) *ObjClass {
 	obj := allocateObject[ObjClass](ObjTypeClass, gObjClassSize)
 	obj.Name = name
+	obj.Methods = NewHashtable()
 	return obj
 }
 
@@ -182,6 +188,19 @@ func NewInstance(class *ObjClass) *ObjInstance {
 	obj := allocateObject[ObjInstance](ObjTypeInstance, gObjInstanceSize)
 	obj.Klass = class
 	obj.Fields = NewHashtable()
+	return obj
+}
+
+type ObjBoundMethod struct {
+	Obj
+	Receiver Value
+	Method   *ObjClosure
+}
+
+func NewBoundMethod(receiver Value, method *ObjClosure) *ObjBoundMethod {
+	obj := allocateObject[ObjBoundMethod](ObjTypeBoundMethod, gObjBoundMethodSize)
+	obj.Receiver = receiver
+	obj.Method = method
 	return obj
 }
 
@@ -225,12 +244,17 @@ func FreeObject(obj *Obj) {
 		vmmem.TriggerGC(gObjUpvalueSize, 1, 0)
 	case ObjTypeClass:
 		debugPrintFreeObject(obj, gObjClassSize)
+		v := castObject[ObjClass](obj)
+		v.Methods.Free()
 		vmmem.TriggerGC(gObjClassSize, 1, 0)
 	case ObjTypeInstance:
 		debugPrintFreeObject(obj, gObjInstanceSize)
 		v := castObject[ObjInstance](obj)
 		v.Fields.Free()
-		vmmem.TriggerGC(gObjClassSize, 1, 0)
+		vmmem.TriggerGC(gObjInstanceSize, 1, 0)
+	case ObjTypeBoundMethod:
+		debugPrintFreeObject(obj, gObjBoundMethodSize)
+		vmmem.TriggerGC(gObjBoundMethodSize, 1, 0)
 	default:
 		panic(fmt.Sprintf("unable to free object of type %d", obj.Type))
 	}
@@ -261,6 +285,9 @@ func PrintObject(obj *Obj) {
 	case ObjTypeInstance:
 		v := castObject[ObjInstance](obj)
 		printfString("%s instance", v.Klass.Name)
+	case ObjTypeBoundMethod:
+		v := castObject[ObjBoundMethod](obj)
+		printFunction(v.Method.Fn)
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}
@@ -365,10 +392,15 @@ func blackenObject(obj *Obj) {
 	case ObjTypeClass:
 		v := castObject[ObjClass](obj)
 		MarkObject(v.Name)
+		v.Methods.Mark()
 	case ObjTypeInstance:
 		v := castObject[ObjInstance](obj)
 		MarkObject(v.Klass)
 		v.Fields.Mark()
+	case ObjTypeBoundMethod:
+		v := castObject[ObjBoundMethod](obj)
+		MarkValue(v.Receiver)
+		MarkObject(v.Method)
 	default:
 		panic(fmt.Sprintf("unable to print object of type %d", obj.Type))
 	}

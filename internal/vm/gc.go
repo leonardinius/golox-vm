@@ -28,6 +28,8 @@ func markRoots() {
 	vmvalue.MarkGlobals()
 
 	vmcompiler.MarkCompilerRoots()
+
+	vmvalue.MarkObject(GlobalVM.InitString)
 }
 
 func traceReferences() {

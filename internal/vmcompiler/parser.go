@@ -282,16 +282,39 @@ func function(fnType FunctionType, fnName *vmvalue.ObjString) {
 	}
 }
 
+func method() {
+	consume(tokens.TokenIdentifier, "Expect method name.")
+	name := identifierConstant(&gParser.previous)
+
+	fnType := FunctionTypeMethod
+	if gParser.previous.Length == 4 &&
+		gParser.previous.LexemeAsString() == "init" {
+		fnType = FunctionTypeInitializer
+	}
+	function(fnType, vmvalue.StringInternTake(gParser.previous.Lexeme()))
+
+	emitOpByte(bytecode.OpMethod, byte(name))
+}
+
 func classDeclaration() {
 	consume(tokens.TokenIdentifier, "Expect class name.")
-	nameConstant := identifierConstant(&gParser.previous)
+	classNameToken := gParser.previous
+	nameConstant := identifierConstant(&classNameToken)
 	declareVariable()
 
 	emitOpByte(bytecode.OpClass, byte(nameConstant))
 	defineVariable(nameConstant)
+	classCompiler := ClassCompiler{Enclosing: gCurrentClass}
+	gCurrentClass = &classCompiler
 
+	namedVariable(classNameToken, false)
 	consume(tokens.TokenLeftBrace, "Expect '{' before class body.")
+	for !check(tokens.TokenRightBrace) && !check(tokens.TokenEOF) {
+		method()
+	}
 	consume(tokens.TokenRightBrace, "Expect '}' after class body.")
+	emitOpcode(bytecode.OpPop)
+	gCurrentClass = gCurrentClass.Enclosing
 }
 
 func funDeclaration() {
@@ -328,6 +351,10 @@ func returnStatement() {
 	if match(tokens.TokenSemicolon) {
 		emitReturn()
 	} else {
+		if gCurrent.FnType == FunctionTypeInitializer {
+			errorAtPrev("Can't return a value from an initializer.")
+		}
+
 		expression()
 		consume(tokens.TokenSemicolon, "Expect ';' after return value.")
 		emitOpcode(bytecode.OpReturn)
@@ -512,8 +539,7 @@ func string_(ParsePrecedence) {
 	emitConstant(vmvalue.ObjAsValue(str))
 }
 
-func namedVariable(name scanner.Token, precedence ParsePrecedence) {
-	canAssign := precedence.CanAssign()
+func namedVariable(name scanner.Token, canAssign bool) {
 	var getOp, setOp bytecode.OpCode
 
 	arg, ok := resolveLocal(gCurrent, &name)
@@ -538,7 +564,15 @@ func namedVariable(name scanner.Token, precedence ParsePrecedence) {
 }
 
 func variable(precedence ParsePrecedence) {
-	namedVariable(gParser.previous, precedence)
+	namedVariable(gParser.previous, precedence.CanAssign())
+}
+
+func this(ParsePrecedence) {
+	if gCurrentClass == nil {
+		errorAtPrev("Can't use 'this' outside of a class.")
+		return
+	}
+	namedVariable(gParser.previous, false)
 }
 
 func grouping(ParsePrecedence) {
@@ -625,6 +659,10 @@ func dot(precedence ParsePrecedence) {
 	if precedence.CanAssign() && match(tokens.TokenEqual) {
 		expression()
 		emitOpByte(bytecode.OpSetProperty, byte(name))
+	} else if match(tokens.TokenLeftParen) {
+		argCount := argumentList()
+		emitOpByte(bytecode.OpInvoke, byte(name))
+		emitByte(argCount)
 	} else {
 		emitOpByte(bytecode.OpGetProperty, byte(name))
 	}
@@ -739,7 +777,7 @@ func init() {
 		tokens.TokenPrint:        {nil, nil, PrecedenceNone},
 		tokens.TokenReturn:       {nil, nil, PrecedenceNone},
 		tokens.TokenSuper:        {nil, nil, PrecedenceNone},
-		tokens.TokenThis:         {nil, nil, PrecedenceNone},
+		tokens.TokenThis:         {this, nil, PrecedenceNone},
 		tokens.TokenTrue:         {literal, nil, PrecedenceNone},
 		tokens.TokenVar:          {nil, nil, PrecedenceNone},
 		tokens.TokenWhile:        {nil, nil, PrecedenceNone},
