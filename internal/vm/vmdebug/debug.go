@@ -50,6 +50,8 @@ func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 		bytecode.OpSetProperty,
 		bytecode.OpMethod:
 		return constantInstruction(instruction, chunk, offset)
+	case bytecode.OpInvoke:
+		return invokeInstruction(instruction, chunk, offset)
 	case bytecode.OpClosure:
 		return closureInstruction(instruction, chunk, offset)
 	case bytecode.OpGetLocal,
@@ -91,6 +93,16 @@ func constantInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) i
 	PrintValue(chunk.ConstantAt(int(constant)))
 	fmt.Println("'")
 	return offset + 2
+}
+
+func invokeInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {
+	constant := chunk.Code[offset+1]
+	argCount := chunk.Code[offset+2]
+	value := chunk.ConstantAt(int(constant))
+	fmt.Printf("%-16s (%d args) %4d '", op, argCount, constant)
+	PrintValue(value)
+	fmt.Println("'")
+	return offset + 3
 }
 
 func closureInstruction(op bytecode.OpCode, chunk *vmchunk.Chunk, offset int) int {

@@ -659,6 +659,10 @@ func dot(precedence ParsePrecedence) {
 	if precedence.CanAssign() && match(tokens.TokenEqual) {
 		expression()
 		emitOpByte(bytecode.OpSetProperty, byte(name))
+	} else if match(tokens.TokenLeftParen) {
+		argCount := argumentList()
+		emitOpByte(bytecode.OpInvoke, byte(name))
+		emitByte(argCount)
 	} else {
 		emitOpByte(bytecode.OpGetProperty, byte(name))
 	}

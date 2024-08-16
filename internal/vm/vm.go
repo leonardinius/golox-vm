@@ -169,6 +169,32 @@ func CallValue(callee vmvalue.Value, argCount byte) (ok bool) {
 	return runtimeError("Can only call functions and classes.")
 }
 
+func Invoke(name *vmvalue.ObjString, argCount byte) (ok bool) {
+	receiver := Peek(argCount)
+
+	if !vmvalue.IsInstance(receiver) {
+		return runtimeError("Only instances have methods.")
+	}
+	instance := vmvalue.ValueAsInstance(receiver)
+
+	var field vmvalue.Value
+	if field, ok = instance.Fields.Get(name); ok {
+		GlobalVM.Stack[GlobalVM.StackTop-int(argCount)-1] = field
+		return CallValue(field, argCount)
+	}
+
+	return invokeFromClass(instance.Klass, name, argCount)
+}
+
+func invokeFromClass(klass *vmvalue.ObjClass, name *vmvalue.ObjString, argCount byte) (ok bool) {
+	var method vmvalue.Value
+	if method, ok = klass.Methods.Get(name); !ok {
+		return runtimeError("Undefined property '%s'.", string(name.Chars))
+	}
+
+	return Call(vmvalue.ValueAsClosure(method), argCount)
+}
+
 func CaptureUpvalue(at int) *vmvalue.ObjUpvalue {
 	value := &GlobalVM.Stack[at]
 	valuePtr := vmvalue.UPtrFromValue(value)
@@ -369,6 +395,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 				break
 			}
 
+			// if not a field, treat as method name
 			ok = BindMethod(instance.Klass, name)
 		case bytecode.OpSetProperty:
 			if !vmvalue.IsInstance(Peek(1)) {
@@ -401,6 +428,12 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 		case bytecode.OpCall:
 			argCount := readByte(frame, chunk)
 			if ok = CallValue(Peek(argCount), argCount); ok {
+				frame, chunk = frameChunk()
+			}
+		case bytecode.OpInvoke:
+			method := readString(frame, chunk)
+			argCount := readByte(frame, chunk)
+			if ok = Invoke(method, argCount); ok {
 				frame, chunk = frameChunk()
 			}
 		case bytecode.OpClosure:
