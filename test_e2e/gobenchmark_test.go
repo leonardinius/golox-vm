@@ -10,8 +10,6 @@ import (
 )
 
 func BenchmarkAll(b *testing.B) {
-	b.ReportAllocs()
-
 	workDir, err := tests.ProjectDir()
 	if err != nil {
 		b.Fatalf("Failed to get absolute path: %v", err)
@@ -26,9 +24,9 @@ func BenchmarkAll(b *testing.B) {
 		"testdata/benchmark/invocation.lox",
 		"testdata/benchmark/method_call.lox",
 		"testdata/benchmark/properties.lox",
-		"testdata/benchmark/string_equality.lox",
+		// "testdata/benchmark/string_equality.lox", // go constant limit
 		"testdata/benchmark/trees.lox",
-		"testdata/benchmark/zoo_batch.lox",
+		// "testdata/benchmark/zoo_batch.lox", // always take 10 seconds and reports throughput
 		"testdata/benchmark/zoo.lox",
 	}
 
