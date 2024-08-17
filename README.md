@@ -1,36 +1,34 @@
-# (Go) Lox Bytecode VM (Crafting interpreters)
+# (Go) Lox Bytecode VM (Crafting Interpreters)
 
-This is an implementation of [The Lox Programming Language](https://www.craftinginterpreters.com/the-lox-language.html) implemented in Go.
+This is an implementation of [The Lox Programming Language](https://www.craftinginterpreters.com/the-lox-language.html) in Go.
 
-This is based on my previous work:
+This builds upon my previous work:
 
-- [leonardinius/golox](https://github.com/leonardinius/golox)
-  Golang Lox interpreter.
-- [leonardinius/clox](https://github.com/leonardinius/clox)
-  C language bytecode VM, basically just going slowly page by page in book and ^C^V the code from there.
+- [leonardinius/golox](https://github.com/leonardinius/golox) - Golang Lox interpreter.
+- [leonardinius/clox](https://github.com/leonardinius/clox) - C language bytecode VM, following the "Crafting Interpreters" book closely.
 
-This repository is re-implementation of what I have learned in clox VM bytecode with golang.
+This repository is a re-implementation of what I learned from the clox VM bytecode using Go.
 
-`golox-vm` is `clox` copy with Go syntax. I ended up copying the design mostly, the main effort went into how to make it work with Go cyclic dependency, GC and memory management, NaN boxing and unsafe pointers.
+`golox-vm` is not a direct copy of `clox`, but rather a reimplementation using Go syntax. The main effort went into dealing with Go's limitations like cyclic dependencies, garbage collection, memory management, NaN boxing, and unsafe pointers.
 
-I feel I've learned a thing or two about (removed experiment) CGO with C.alloc/C.free memory management etc.
+I've also learned a thing or two about (removed experiment) CGO (Calling Go from C) with C.alloc/C.free memory management, etc.
 
-## What's included?
+## What's Included?
 
-- golox-vm bytecode.
-- mark & sweep garbage collector, NaN boxed values.
-- LOX: functions, OOP etc..
-- acceptance tests: ^C^V from [munificent/craftinginterpreters:test/](https://github.com/munificent/craftinginterpreters/tree/master/test).
-- benchmarks.
-- pprof profiler support: `GLOX_PPROF`=0/1,`GLOX_PPROF_CPU`=0/1,`GLOX_PPROF_MEM`=0/1
+* `golox-vm` bytecode
+* Mark & sweep garbage collector with NaN boxed values
+* LOX features: functions, OOP, etc.
+* Acceptance tests: Copied from [munificent/craftinginterpreters:test/](https://github.com/munificent/craftinginterpreters/tree/master/test)
+* Benchmarks
+* pprof profiler support: `GLOX_PPROF`=0/1,`GLOX_PPROF_CPU`=0/1,`GLOX_PPROF_MEM`=0/1
 
-## Completeess & Speed
+## Completeness & Speed
 
-- `make test_e2e` pass all original test suite.
-- `make bench` executes basic tests. At the moment the speed is better than [leonardinius/golox](https://github.com/leonardinius/golox) but not as fast as [leonardinius/clox](https://github.com/leonardinius/clox).
-  More detailed analysis is due.
+* `make test_e2e` passes all original test suites.
+* `make bench` executes basic tests. Currently, the speed is better than [leonardinius/golox](https://github.com/leonardinius/golox) but not as fast as [leonardinius/clox](https://github.com/leonardinius/clox).
+* More detailed analysis is needed.
 
-## How to XY locally?
+## How to Run Locally
 
 ```terminal
 λ make 
