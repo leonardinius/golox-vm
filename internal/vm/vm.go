@@ -419,7 +419,6 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit,maintidx
 			subclass := vmvalue.ValueAsClass(Peek(0))
 			subclass.Methods.PutAll(&vmvalue.ValueAsClass(superclass).Methods)
 			Pop() // Subclass.
-			break
 		case bytecode.OpMethod:
 			DefineMethod(readString(frame, chunk))
 		case bytecode.OpJump:
