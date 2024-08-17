@@ -11,9 +11,9 @@ This is based on my previous work:
 
 This repository is re-implementation of what I have learned in clox VM bytecode with golang.
 
-`golox-vm` is `clox` copy with Go syntax. I ended up copying the design mostly, the main effort went into how to make it work with Go cyclic dependency, GC and memory management, NaN boxing and unsafe pointers.
+`golox-vm` is `clox` copy with Go syntax. I ended up copying the design, the main effort went into how to make it work with Go cyclic dependency, GC and memory management, NaN boxing and unsafe pointers.
 
-I feel I've learned a thing or two about (removed experiment) CGO with C.alloc/C.free memory management etc.
+I feel I've learned a thingp or two about (removed experiment) CGO with C.alloc/C.free memory management etc.
 
 ## What's included?
 
