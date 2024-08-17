@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -70,11 +71,11 @@ type Suite struct {
 	executable   string
 	args         []string
 	testsGroups  map[string]string
-	tests        int
-	passed       int
-	failed       int
-	skipped      int
-	expectations int
+	tests        atomic.Uint32
+	passed       atomic.Uint32
+	failed       atomic.Uint32
+	skipped      atomic.Uint32
+	expectations atomic.Uint32
 }
 
 func (r *Runner) RunAllSuites() {
@@ -116,7 +117,12 @@ func (r *Runner) runSuite(suite *Suite) {
 	}
 
 	r.t.Cleanup(func() {
-		r.t.Logf("Suite %s: Tests=%d, Passed=%d, Failed=%d, Skipped=%d, Expectations: %d", suite.name, suite.tests, suite.passed, suite.failed, suite.skipped, suite.expectations)
+		r.t.Logf("Suite %s: Tests=%d, Passed=%d, Failed=%d, Skipped=%d, Expectations: %d", suite.name,
+			suite.tests.Load(),
+			suite.passed.Load(),
+			suite.failed.Load(),
+			suite.skipped.Load(),
+			suite.expectations.Load())
 	})
 }
 
@@ -129,20 +135,20 @@ func (r *Runner) runTest(suite *Suite, path string) {
 
 	r.t.Run(suite.name+"/"+path, func(t *testing.T) {
 		test.t = t
-		suite.tests++
+		suite.tests.Add(1)
 		if state, ok := test.parse(); !ok {
 			r.t.Logf("Skipped [%s]/%s", suite.name, test.path)
-			suite.skipped++
+			suite.skipped.Add(1)
 			t.Skip(state)
 			return
 		}
-		suite.expectations += test.Expectations()
+		suite.expectations.Add(uint32(test.Expectations()))
 		failures := test.run(r.mode)
 		if len(failures) > 0 {
-			suite.failed++
+			suite.failed.Add(1)
 			t.Fatalf("%s\n%s", path, strings.Join(failures, "\n"))
 		} else {
-			suite.passed++
+			suite.passed.Add(1)
 		}
 	})
 }
@@ -458,8 +464,8 @@ func (r *Runner) InitSuites() {
 	}
 	mainFn := cmd.Main
 	mainGo := workDir + "/main.go"
-	goloxBin := workDir + "/bin/golox-vm"
-	exe := exec.Command("go", "build", "-o", goloxBin, mainGo)
+	bin := workDir + "/bin/golox-e2e"
+	exe := exec.Command("go", "build", "-o", bin, mainGo)
 	if outbytes, err := exe.CombinedOutput(); err != nil {
 		out := string(outbytes)
 		r.t.Fatalf("go build failed with %v: %s\n", err, out)
@@ -474,7 +480,7 @@ func (r *Runner) InitSuites() {
 			name:        name,
 			language:    "go",
 			mainFn:      mainFn,
-			executable:  goloxBin,
+			executable:  bin,
 			testsGroups: suiteTests,
 			args:        []string{},
 		}
