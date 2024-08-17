@@ -180,12 +180,16 @@ func declareVariable() {
 			break
 		}
 
-		if bytes.Equal(name.Lexeme(), local.Name.Lexeme()) {
+		if identifierEquals(name, &local.Name) {
 			errorAtPrev("Already a variable with this name in this scope.")
 		}
 	}
 
 	addLocal(*name)
+}
+
+func identifierEquals(left, right *scanner.Token) bool {
+	return bytes.Equal(left.Lexeme(), right.Lexeme())
 }
 
 func parseVariable(errorMessage string) int {
@@ -298,22 +302,41 @@ func method() {
 
 func classDeclaration() {
 	consume(tokens.TokenIdentifier, "Expect class name.")
-	classNameToken := gParser.previous
-	nameConstant := identifierConstant(&classNameToken)
+	className := gParser.previous
+	nameConstant := identifierConstant(&className)
 	declareVariable()
 
 	emitOpByte(bytecode.OpClass, byte(nameConstant))
 	defineVariable(nameConstant)
-	classCompiler := ClassCompiler{Enclosing: gCurrentClass}
+	classCompiler := ClassCompiler{Enclosing: gCurrentClass, HasSuperclass: false}
 	gCurrentClass = &classCompiler
 
-	namedVariable(classNameToken, false)
+	if match(tokens.TokenLess) {
+		consume(tokens.TokenIdentifier, "Expect superclass name.")
+		variable_(false)
+		if identifierEquals(&className, &gParser.previous) {
+			errorAtPrev("A class can't inherit from itself.")
+		}
+
+		beginScope()
+		addLocal(syntheticToken("super"))
+		defineVariable(0)
+
+		namedVariable(className, false)
+		emitOpcode(bytecode.OpInherit)
+		classCompiler.HasSuperclass = true
+	}
+
+	namedVariable(className, false)
 	consume(tokens.TokenLeftBrace, "Expect '{' before class body.")
 	for !check(tokens.TokenRightBrace) && !check(tokens.TokenEOF) {
 		method()
 	}
 	consume(tokens.TokenRightBrace, "Expect '}' after class body.")
 	emitOpcode(bytecode.OpPop)
+	if classCompiler.HasSuperclass {
+		endScope()
+	}
 	gCurrentClass = gCurrentClass.Enclosing
 }
 
@@ -564,7 +587,19 @@ func namedVariable(name scanner.Token, canAssign bool) {
 }
 
 func variable(precedence ParsePrecedence) {
-	namedVariable(gParser.previous, precedence.CanAssign())
+	variable_(precedence.CanAssign())
+}
+
+func variable_(canAssign bool) {
+	namedVariable(gParser.previous, canAssign)
+}
+
+func syntheticToken(text string) scanner.Token {
+	token := scanner.Token{}
+	token.Source = []byte(text)
+	token.Start = 0
+	token.Length = len(token.Source)
+	return token
 }
 
 func this(ParsePrecedence) {
@@ -572,7 +607,30 @@ func this(ParsePrecedence) {
 		errorAtPrev("Can't use 'this' outside of a class.")
 		return
 	}
-	namedVariable(gParser.previous, false)
+	variable_(false)
+}
+
+func super(ParsePrecedence) {
+	if gCurrentClass == nil {
+		errorAtPrev("Can't use 'super' outside of a class.")
+	} else if !gCurrentClass.HasSuperclass {
+		errorAtPrev("Can't use 'super' in a class with no superclass.")
+	}
+
+	consume(tokens.TokenDot, "Expect '.' after 'super'.")
+	consume(tokens.TokenIdentifier, "Expect superclass method name.")
+	name := identifierConstant(&gParser.previous)
+
+	namedVariable(syntheticToken("this"), false)
+	if match(tokens.TokenLeftParen) {
+		argCount := argumentList()
+		namedVariable(syntheticToken("super"), false)
+		emitOpByte(bytecode.OpSuperInvoke, byte(name))
+		emitByte(argCount)
+	} else {
+		namedVariable(syntheticToken("super"), false)
+		emitOpByte(bytecode.OpGetSuper, byte(name))
+	}
 }
 
 func grouping(ParsePrecedence) {
@@ -776,7 +834,7 @@ func init() {
 		tokens.TokenOr:           {nil, or_, PrecedenceOr},
 		tokens.TokenPrint:        {nil, nil, PrecedenceNone},
 		tokens.TokenReturn:       {nil, nil, PrecedenceNone},
-		tokens.TokenSuper:        {nil, nil, PrecedenceNone},
+		tokens.TokenSuper:        {super, nil, PrecedenceNone},
 		tokens.TokenThis:         {this, nil, PrecedenceNone},
 		tokens.TokenTrue:         {literal, nil, PrecedenceNone},
 		tokens.TokenVar:          {nil, nil, PrecedenceNone},

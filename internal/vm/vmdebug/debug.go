@@ -48,9 +48,11 @@ func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 		bytecode.OpClass,
 		bytecode.OpGetProperty,
 		bytecode.OpSetProperty,
-		bytecode.OpMethod:
+		bytecode.OpMethod,
+		bytecode.OpGetSuper:
 		return constantInstruction(instruction, chunk, offset)
-	case bytecode.OpInvoke:
+	case bytecode.OpInvoke,
+		bytecode.OpSuperInvoke:
 		return invokeInstruction(instruction, chunk, offset)
 	case bytecode.OpClosure:
 		return closureInstruction(instruction, chunk, offset)
@@ -80,6 +82,7 @@ func DisassembleInstruction(chunk *vmchunk.Chunk, offset int) int {
 		bytecode.OpPop,
 		bytecode.OpPrint,
 		bytecode.OpCloseUpvalue,
+		bytecode.OpInherit,
 		bytecode.OpReturn:
 		return simpleInstruction(instruction, offset)
 	default:

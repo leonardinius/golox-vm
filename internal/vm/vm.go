@@ -183,13 +183,13 @@ func Invoke(name *vmvalue.ObjString, argCount byte) (ok bool) {
 		return CallValue(field, argCount)
 	}
 
-	return invokeFromClass(instance.Klass, name, argCount)
+	return InvokeFromClass(instance.Klass, name, argCount)
 }
 
-func invokeFromClass(klass *vmvalue.ObjClass, name *vmvalue.ObjString, argCount byte) (ok bool) {
+func InvokeFromClass(klass *vmvalue.ObjClass, name *vmvalue.ObjString, argCount byte) (ok bool) {
 	var method vmvalue.Value
 	if method, ok = klass.Methods.Get(name); !ok {
-		return runtimeError("Undefined property '%s'.", string(name.Chars))
+		return runtimeError("Undefined property '%s'.", name.Chars)
 	}
 
 	return Call(vmvalue.ValueAsClosure(method), argCount)
@@ -242,7 +242,7 @@ func DefineMethod(name *vmvalue.ObjString) {
 func BindMethod(klass *vmvalue.ObjClass, name *vmvalue.ObjString) (ok bool) {
 	var method vmvalue.Value
 	if method, ok = klass.Methods.Get(name); !ok {
-		return runtimeError("Undefined property '%s'.", string(name.Chars))
+		return runtimeError("Undefined property '%s'.", name.Chars)
 	}
 
 	bound := vmvalue.NewBoundMethod(Peek(0), vmvalue.ValueAsClosure(method))
@@ -254,8 +254,7 @@ func BindMethod(klass *vmvalue.ObjClass, name *vmvalue.ObjString) (ok bool) {
 func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
 	iArgs := int(argCount)
 	if iArgs != closure.Fn.Arity {
-		return runtimeError("Expected %d arguments but got %d.",
-			closure.Fn.Arity, argCount)
+		return runtimeError("Expected %d arguments but got %d.", closure.Fn.Arity, argCount)
 	}
 
 	if GlobalVM.FrameCount == MaxCallFrames {
@@ -272,8 +271,7 @@ func Call(closure *vmvalue.ObjClosure, argCount byte) (ok bool) {
 
 func CallNative(native *vmvalue.ObjNative, argCount byte) (ok bool) {
 	if argCount != native.Arity {
-		return runtimeError("Expected %d arguments but got %d.",
-			native.Arity, argCount)
+		return runtimeError("Expected %d arguments but got %d.", native.Arity, argCount)
 	}
 	iArgs := int(argCount)
 	args := GlobalVM.Stack[GlobalVM.StackTop-iArgs : GlobalVM.StackTop]
@@ -298,7 +296,7 @@ func DeleteGlobal(name *vmvalue.ObjString) bool {
 	return vmvalue.DeleteGlobal(name)
 }
 
-func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
+func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit,maintidx
 	if vmdebug.DebugDisassembler {
 		fmt.Println("== trace execution ==")
 		defer fmt.Println()
@@ -412,6 +410,16 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 			name := readString(frame, chunk)
 			class := vmvalue.NewClass(name)
 			Push(vmvalue.ObjAsValue(class))
+		case bytecode.OpInherit:
+			superclass := Peek(1)
+			if !vmvalue.IsClass(superclass) {
+				ok = runtimeError("Superclass must be a class.")
+				break
+			}
+			subclass := vmvalue.ValueAsClass(Peek(0))
+			subclass.Methods.PutAll(&vmvalue.ValueAsClass(superclass).Methods)
+			Pop() // Subclass.
+			break
 		case bytecode.OpMethod:
 			DefineMethod(readString(frame, chunk))
 		case bytecode.OpJump:
@@ -436,6 +444,13 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 			if ok = Invoke(method, argCount); ok {
 				frame, chunk = frameChunk()
 			}
+		case bytecode.OpSuperInvoke:
+			method := readString(frame, chunk)
+			argCount := readByte(frame, chunk)
+			superclass := vmvalue.ValueAsClass(Pop())
+			if ok = InvokeFromClass(superclass, method, argCount); ok {
+				frame, chunk = frameChunk()
+			}
 		case bytecode.OpClosure:
 			fn := vmvalue.ValueAsFunction(readConstant(frame, chunk))
 			closure := vmvalue.NewClosure(fn)
@@ -450,6 +465,10 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit
 					closure.Upvalues[i] = frame.Closure.Upvalues[index]
 				}
 			}
+		case bytecode.OpGetSuper:
+			method := readString(frame, chunk)
+			superclass := vmvalue.ValueAsClass(Pop())
+			ok = BindMethod(superclass, method)
 		case bytecode.OpGetUpvalue:
 			slot := readByte(frame, chunk)
 			Push(*frame.Closure.Upvalues[slot].Location)

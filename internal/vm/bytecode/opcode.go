@@ -39,6 +39,9 @@ const (
 	OpGetProperty
 	OpMethod
 	OpInvoke
+	OpSuperInvoke
+	OpInherit
+	OpGetSuper
 	OpReturn
 )
 
@@ -77,6 +80,9 @@ var gOpCodeStrings = map[OpCode]string{
 	OpGetProperty:  "OP_GET_PROPERTY",
 	OpMethod:       "OP_METHOD",
 	OpInvoke:       "OP_INVOKE",
+	OpSuperInvoke:  "OP_SUPER_INVOKE",
+	OpInherit:      "OP_INHERIT",
+	OpGetSuper:     "OP_GET_SUPER",
 }
 
 func (op OpCode) String() string {
