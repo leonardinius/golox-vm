@@ -10,13 +10,11 @@ import (
 )
 
 func BenchmarkAll(b *testing.B) {
-	b.ReportAllocs()
-
 	workDir, err := tests.ProjectDir()
 	if err != nil {
 		b.Fatalf("Failed to get absolute path: %v", err)
 	}
-	gobin1 := buildGobin1(b, workDir)
+	bin := buildBenchGobin(b, workDir)
 
 	benchmarks := []string{
 		"testdata/benchmark/binary_trees.lox",
@@ -26,30 +24,30 @@ func BenchmarkAll(b *testing.B) {
 		"testdata/benchmark/invocation.lox",
 		"testdata/benchmark/method_call.lox",
 		"testdata/benchmark/properties.lox",
-		"testdata/benchmark/string_equality.lox",
+		// "testdata/benchmark/string_equality.lox", // go constant limit
 		"testdata/benchmark/trees.lox",
-		"testdata/benchmark/zoo_batch.lox",
+		// "testdata/benchmark/zoo_batch.lox", // always take 10 seconds and reports throughput
 		"testdata/benchmark/zoo.lox",
 	}
 
 	b.ResetTimer()
 	for _, bench := range benchmarks {
 		b.Run("GOBIN1/"+bench, func(b *testing.B) {
-			runBenchN(b, workDir, gobin1, bench)
+			runBenchN(b, workDir, bin, bench)
 		})
 	}
 }
 
-func runBenchN(b *testing.B, workDir string, args ...string) {
+func runBenchN(b *testing.B, workDir, binary string, args ...string) {
 	b.Helper()
 	for n := 0; n < b.N; n++ {
-		runBench(b, workDir, args...)
+		runBench(b, workDir, binary, args...)
 	}
 }
 
-func runBench(b *testing.B, workDir string, args ...string) {
+func runBench(b *testing.B, workDir, binary string, args ...string) {
 	b.Helper()
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.Command(binary, args...)
 	cmd.Dir = workDir
 	stdout := new(strings.Builder)
 	stderr := new(strings.Builder)
@@ -93,14 +91,14 @@ func runBench(b *testing.B, workDir string, args ...string) {
 	b.ReportMetric(elapsedTimeSeconds, "elapsed/op")
 }
 
-func buildGobin1(b *testing.B, workDir string) string {
+func buildBenchGobin(b *testing.B, workDir string) string {
 	b.Helper()
 	mainGo := workDir + "/main.go"
-	gobin1 := workDir + "/bin/golox"
-	cmd := exec.Command("go", "build", "-o", gobin1, mainGo)
+	bin := workDir + "/bin/golox-bench"
+	cmd := exec.Command("go", "build", "-o", bin, mainGo)
 	if outbytes, err := cmd.CombinedOutput(); err != nil {
 		out := string(outbytes)
 		b.Fatalf("go build failed with %v: %#v\n", err, out)
 	}
-	return gobin1
+	return bin
 }

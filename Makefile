@@ -66,6 +66,9 @@ test: clean go/test ## Runs all tests
 .PHONY: test_e2e
 test_e2e: clean go/test_e2e ## Runs all e2e tests
 
+.PHONY: bench
+bench: clean go/benchmark ## Runs all benchmarks
+
 .PHONY: lint
 lint: go/lint ## Runs all linters
 
@@ -107,8 +110,13 @@ go/test: $(BIN)/gotestsum ### Runs unit tests
 
 .PHONY: go/test_e2e
 go/test_e2e: $(BIN)/gotestsum ### Runs e2e tests
-	@echo -e "$(CYAN)--- go test e2e ...$(CLEAR)"
+	@echo -e "$(CYAN)--- go test_e2e ...$(CLEAR)"
 	@$(BIN)/gotestsum --debug --format-hide-empty-pkg --format=testdox -- -shuffle=on -race -timeout=60s -count 1 -parallel 3 -v ./test_e2e/...
+
+.PHONY: go/benchmark
+go/benchmark: ### Runs unit tests
+	@echo -e "$(CYAN)--- go benchmark ...$(CLEAR)"
+	go test -v -bench=. -run='^#' -benchtime=5s -timeout=30m ./test_e2e/...
 
 .PHONY: go/release
 go/release: ### Build
