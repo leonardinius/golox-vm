@@ -59,7 +59,7 @@ linters:
     - paralleltest
     - tparallel
     - execinquery
-  fast: true
+  fast: false
   enable-all: true
 
 issues:

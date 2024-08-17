@@ -140,7 +140,7 @@ func (r *Runner) runTest(suite *Suite, path string) {
 		failures := test.run(r.mode)
 		if len(failures) > 0 {
 			suite.failed++
-			t.Fatalf("%s\n%s", filepath.Join(testProjectHomeDir, path), strings.Join(failures, "\n"))
+			t.Fatalf("%s\n%s", path, strings.Join(failures, "\n"))
 		} else {
 			suite.passed++
 		}

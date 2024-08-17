@@ -9,6 +9,7 @@
   "go.lintFlags": [
     "--config",
     ".golangci.yml",
+    "--fast",
   ],
   "go.lintOnSave": "workspace",
   "explorer.sortOrder": "foldersNestsFiles",

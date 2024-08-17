@@ -44,7 +44,8 @@ type Compiler struct {
 }
 
 type ClassCompiler struct {
-	Enclosing *ClassCompiler
+	Enclosing     *ClassCompiler
+	HasSuperclass bool
 }
 
 type Local struct {
