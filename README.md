@@ -9,7 +9,7 @@ This builds upon my previous work:
 
 This repository is a re-implementation of what I learned from the clox VM bytecode using Go.
 
-`golox-vm` is not a direct copy of `clox`, but rather a reimplementation using Go syntax. The main effort went into dealing with Go's specific features like cyclic dependencies, garbage collection, memory management, NaN boxing, and unsafe pointers.
+`golox-vm` is not a direct copy of `clox`, but rather a reimplementation using Go syntax. The main effort went into dealing with Go's limitations like cyclic dependencies, garbage collection, memory management, NaN boxing, and unsafe pointers.
 
 I've also learned a thing or two about (removed experiment) CGO (Calling Go from C) with C.alloc/C.free memory management, etc.
 
