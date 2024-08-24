@@ -330,9 +330,9 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit,maintidx
 		case bytecode.OpEqual:
 			Push(vmvalue.BoolAsValue(vmvalue.IsValuesEqual(Pop(), Pop())))
 		case bytecode.OpGreater:
-			ok = binaryNumCompareOp(binOpGreater)
+			ok = binaryNumCompareGreater()
 		case bytecode.OpLess:
-			ok = binaryNumCompareOp(binOpLess)
+			ok = binaryNumCompareLess()
 		case bytecode.OpAdd:
 			if vmvalue.IsString(Peek(0)) && vmvalue.IsString(Peek(1)) {
 				ok = stringConcat()
@@ -342,11 +342,11 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit,maintidx
 				ok = runtimeError("Operands must be two numbers or two strings.")
 			}
 		case bytecode.OpSubtract:
-			ok = binaryNumMathOp(binOpSubtract)
+			ok = binaryNumMathSubtract()
 		case bytecode.OpMultiply:
-			ok = binaryNumMathOp(binOpMultiply)
+			ok = binaryNumMathMultiply()
 		case bytecode.OpDivide:
-			ok = binaryNumMathOp(binOpDivide)
+			ok = binaryNumMathDivide()
 		case bytecode.OpNegate:
 			ok = opNegate()
 		case bytecode.OpNot:
@@ -505,18 +505,6 @@ func isFalsey(value vmvalue.Value) bool {
 	return !isTruey(value)
 }
 
-func binaryNumOp(op func(vmvalue.Value, vmvalue.Value) vmvalue.Value) (ok bool) {
-	if ok = vmvalue.IsNumber(Peek(0)) && vmvalue.IsNumber(Peek(1)); !ok {
-		runtimeError("Operands must be numbers.")
-		return ok
-	}
-
-	b := Pop()
-	a := Pop()
-	Push(op(a, b))
-	return ok
-}
-
 func binaryNumAddNoChecks() (ok bool) {
 	b := vmvalue.ValueAsNumber(Pop())
 	a := vmvalue.ValueAsNumber(Pop())
@@ -524,20 +512,97 @@ func binaryNumAddNoChecks() (ok bool) {
 	return true
 }
 
-func binaryNumMathOp(op func(float64, float64) float64) (ok bool) {
-	return binaryNumOp(func(a vmvalue.Value, b vmvalue.Value) vmvalue.Value {
-		av := vmvalue.ValueAsNumber(a)
-		bv := vmvalue.ValueAsNumber(b)
-		return vmvalue.NumberAsValue(op(av, bv))
-	})
+func binaryNumMathSubtract() (ok bool) {
+	b := Peek(0)
+	if ok = vmvalue.IsNumber(b); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	a := Peek(1)
+	if ok = vmvalue.IsNumber(a); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	GlobalVM.StackTop -= 2
+
+	av := vmvalue.ValueAsNumber(a)
+	bv := vmvalue.ValueAsNumber(b)
+	Push(vmvalue.NumberAsValue(av - bv))
+	return ok
 }
 
-func binaryNumCompareOp(op func(float64, float64) bool) (ok bool) {
-	return binaryNumOp(func(a vmvalue.Value, b vmvalue.Value) vmvalue.Value {
-		av := vmvalue.ValueAsNumber(a)
-		bv := vmvalue.ValueAsNumber(b)
-		return vmvalue.BoolAsValue(op(av, bv))
-	})
+func binaryNumMathMultiply() (ok bool) {
+	b := Peek(0)
+	if ok = vmvalue.IsNumber(b); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	a := Peek(1)
+	if ok = vmvalue.IsNumber(a); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	GlobalVM.StackTop -= 2
+
+	av := vmvalue.ValueAsNumber(a)
+	bv := vmvalue.ValueAsNumber(b)
+	Push(vmvalue.NumberAsValue(av * bv))
+	return ok
+}
+
+func binaryNumMathDivide() (ok bool) {
+	b := Peek(0)
+	if ok = vmvalue.IsNumber(b); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	a := Peek(1)
+	if ok = vmvalue.IsNumber(a); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	GlobalVM.StackTop -= 2
+
+	av := vmvalue.ValueAsNumber(a)
+	bv := vmvalue.ValueAsNumber(b)
+	Push(vmvalue.NumberAsValue(av / bv))
+	return ok
+}
+
+func binaryNumCompareGreater() (ok bool) {
+	b := Peek(0)
+	if ok = vmvalue.IsNumber(b); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	a := Peek(1)
+	if ok = vmvalue.IsNumber(a); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	GlobalVM.StackTop -= 2
+	av := vmvalue.ValueAsNumber(a)
+	bv := vmvalue.ValueAsNumber(b)
+	Push(vmvalue.BoolAsValue(av > bv))
+	return ok
+}
+
+func binaryNumCompareLess() (ok bool) {
+	b := Peek(0)
+	if ok = vmvalue.IsNumber(b); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	a := Peek(1)
+	if ok = vmvalue.IsNumber(a); !ok {
+		runtimeError("Operands must be numbers.")
+		return ok
+	}
+	GlobalVM.StackTop -= 2
+	av := vmvalue.ValueAsNumber(a)
+	bv := vmvalue.ValueAsNumber(b)
+	Push(vmvalue.BoolAsValue(av < bv))
+	return ok
 }
 
 func opNegate() (ok bool) {
@@ -561,26 +626,6 @@ func stringConcat() (ok bool) {
 	Pop()
 	Push(vmvalue.ObjAsValue(str))
 	return true
-}
-
-func binOpSubtract(a, b float64) float64 {
-	return a - b
-}
-
-func binOpMultiply(a, b float64) float64 {
-	return a * b
-}
-
-func binOpDivide(a, b float64) float64 {
-	return a / b
-}
-
-func binOpGreater(a, b float64) bool {
-	return a > b
-}
-
-func binOpLess(a, b float64) bool {
-	return a < b
 }
 
 func frameChunk() (*CallFrame, *vmchunk.Chunk) {
