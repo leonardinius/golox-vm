@@ -8,6 +8,8 @@
 *.so
 *.dylib
 
+# IDEA
+.idea/
 # VSCode
 /.vscode/*.log
 

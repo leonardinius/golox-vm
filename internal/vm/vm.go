@@ -337,7 +337,7 @@ func Run() (vmvalue.Value, error) { //nolint:gocyclo,gocognit,maintidx
 			if vmvalue.IsString(Peek(0)) && vmvalue.IsString(Peek(1)) {
 				ok = stringConcat()
 			} else if vmvalue.IsNumber(Peek(0)) && vmvalue.IsNumber(Peek(1)) {
-				ok = binaryNumMathOp(binOpAdd)
+				ok = binaryNumAddNoChecks()
 			} else {
 				ok = runtimeError("Operands must be two numbers or two strings.")
 			}
@@ -506,7 +506,7 @@ func isFalsey(value vmvalue.Value) bool {
 }
 
 func binaryNumOp(op func(vmvalue.Value, vmvalue.Value) vmvalue.Value) (ok bool) {
-	if ok = (vmvalue.IsNumber(Peek(0)) && vmvalue.IsNumber(Peek(1))); !ok {
+	if ok = vmvalue.IsNumber(Peek(0)) && vmvalue.IsNumber(Peek(1)); !ok {
 		runtimeError("Operands must be numbers.")
 		return ok
 	}
@@ -515,6 +515,13 @@ func binaryNumOp(op func(vmvalue.Value, vmvalue.Value) vmvalue.Value) (ok bool) 
 	a := Pop()
 	Push(op(a, b))
 	return ok
+}
+
+func binaryNumAddNoChecks() (ok bool) {
+	b := vmvalue.ValueAsNumber(Pop())
+	a := vmvalue.ValueAsNumber(Pop())
+	Push(vmvalue.NumberAsValue(a + b))
+	return true
 }
 
 func binaryNumMathOp(op func(float64, float64) float64) (ok bool) {
@@ -554,10 +561,6 @@ func stringConcat() (ok bool) {
 	Pop()
 	Push(vmvalue.ObjAsValue(str))
 	return true
-}
-
-func binOpAdd(a, b float64) float64 {
-	return a + b
 }
 
 func binOpSubtract(a, b float64) float64 {
